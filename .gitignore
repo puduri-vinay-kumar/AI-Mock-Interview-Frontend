@@ -1,0 +1,39 @@
+node_modules
+constants.ts
+# Dependencies
+/node_modules
+/.pnp
+.pnp.js
+
+# Next.js Build and Cache Outputs
+/.next/
+/out/
+/build
+
+# Local Environment Variables (Sensitive Data)
+.env*.local
+.env
+.env.production
+
+# Vercel Deployment Metadata
+.vercel
+
+# Testing Coverage Reports
+/coverage
+
+# TypeScript Build Info
+*.tsbuildinfo
+next-env.d.ts
+
+# Debugging and System Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.pem
+
+node_modules/
+.next/
+.dist/
+out/
+build/
