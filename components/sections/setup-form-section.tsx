@@ -2,7 +2,7 @@
 
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { BriefcaseBusiness, Clock3, Layers3, Sparkles, UserRoundSearch } from "lucide-react";
+import { BriefcaseBusiness, Hash, Layers3, Sparkles, UserRoundSearch } from "lucide-react";
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
@@ -13,6 +13,7 @@ import { GlowButton } from "@/components/ui/glow-button";
 import { UploadBox } from "@/components/ui/upload-box";
 import { setupHighlights } from "@/data/mock";
 import { useCreateInterview, useResumeUpload } from "@/hooks/useInterview";
+import { DEFAULT_QUESTION_COUNT } from "@/lib/constants";
 import { useInterviewStore } from "@/store/interview.store";
 
 const setupSchema = z.object({
@@ -23,7 +24,7 @@ const setupSchema = z.object({
   interviewType: z.enum(["technical", "hr", "behavioral", "coding", "mixed"], {
     message: "Select an interview type."
   }),
-  duration: z.number().min(15, "Select interview duration.")
+  questionCount: z.number().min(1, "Select question count.").max(12, "Keep the interview focused.")
 });
 
 type SetupValues = z.infer<typeof setupSchema>;
@@ -51,11 +52,11 @@ const interviewTypeOptions = [
   { label: "Mixed", value: "mixed" }
 ];
 
-const durationOptions = [
-  { label: "15 Minutes", value: "15" },
-  { label: "30 Minutes", value: "30" },
-  { label: "45 Minutes", value: "45" },
-  { label: "60 Minutes", value: "60" }
+const questionCountOptions = [
+  { label: "3 Questions", value: "3" },
+  { label: "5 Questions", value: "5" },
+  { label: "7 Questions", value: "7" },
+  { label: "10 Questions", value: "10" }
 ];
 
 export function SetupFormSection() {
@@ -71,7 +72,7 @@ export function SetupFormSection() {
       role: "",
       experienceLevel: "junior",
       interviewType: "technical",
-      duration: 30
+      questionCount: DEFAULT_QUESTION_COUNT
     }
   });
 
@@ -83,17 +84,25 @@ export function SetupFormSection() {
       return;
     }
 
-    await resumeUpload.mutateAsync({
-      file,
-      onProgress: setUploadProgress
-    });
+    try {
+      await resumeUpload.mutateAsync({
+        file,
+        onProgress: setUploadProgress
+      });
+    } catch {
+      // mutation onError already surfaces a user-facing toast
+    }
   };
 
   const onSubmit = async (values: SetupValues) => {
-    await createInterview.mutateAsync({
-      ...values,
-      resumeId: resumeId ?? undefined
-    });
+    try {
+      await createInterview.mutateAsync({
+        ...values,
+        resumeId: resumeId ?? undefined
+      });
+    } catch {
+      // mutation onError already surfaces a user-facing toast
+    }
   };
 
   return (
@@ -109,7 +118,7 @@ export function SetupFormSection() {
           Setup Your Interview
         </h1>
         <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-          Provide a few details to personalize your interview experience and shape a polished practice flow.
+          Choose your role, interview style, and number of questions to begin a voice-first mock interview experience.
         </p>
       </motion.div>
 
@@ -151,14 +160,14 @@ export function SetupFormSection() {
               error={form.formState.errors.interviewType?.message}
             />
             <FormSelect
-              label="Interview Duration"
-              placeholder="Choose session length"
-              options={durationOptions}
-              icon={<Clock3 className="size-5" />}
+              label="Question Count"
+              placeholder="Choose number of questions"
+              options={questionCountOptions}
+              icon={<Hash className="size-5" />}
               required
-              value={String(form.watch("duration"))}
-              onChange={(value) => form.setValue("duration", Number(value), { shouldValidate: true })}
-              error={form.formState.errors.duration?.message}
+              value={String(form.watch("questionCount"))}
+              onChange={(value) => form.setValue("questionCount", Number(value), { shouldValidate: true })}
+              error={form.formState.errors.questionCount?.message}
             />
           </div>
 
@@ -170,7 +179,7 @@ export function SetupFormSection() {
               <div>
                 <h2 className="text-2xl font-semibold text-white">Upload Resume</h2>
                 <p className="mt-3 text-base leading-7 text-slate-300">
-                  Your resume is uploaded to the live backend and used to personalize question generation.
+                  Your resume is uploaded to the live backend and can still be used to personalize the voice interview flow.
                 </p>
               </div>
 
@@ -210,8 +219,8 @@ export function SetupFormSection() {
                 <div>
                   <h3 className="text-xl font-semibold text-white">Why uploading a resume helps</h3>
                   <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                    Parsed skills from the backend help shape role-specific prompts, better question selection, and a
-                    more realistic mock interview session.
+                    Parsed skills from the backend help shape role-specific prompts, sharper follow-up questions, and a
+                    more realistic voice interview session.
                   </p>
                   {resumeId ? <p className="mt-2 text-xs text-emerald-300">Resume connected successfully.</p> : null}
                 </div>

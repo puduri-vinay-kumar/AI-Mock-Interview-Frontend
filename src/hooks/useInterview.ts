@@ -8,7 +8,7 @@ import { interviewService } from "@/services/interview.service";
 import { uploadService } from "@/services/upload.service";
 import { useInterviewStore } from "@/store/interview.store";
 import { useUIStore } from "@/store/ui.store";
-import type { InterviewAnswerInput, InterviewSetupInput, TranscriptEntry } from "@/types/interview.types";
+import type { InterviewSetupInput, InterviewVoiceAnswerInput } from "@/types/interview.types";
 
 export function useResumeUpload() {
   const setResumeAnalysis = useInterviewStore((state) => state.setResumeAnalysis);
@@ -41,19 +41,21 @@ export function useCreateInterview() {
   const router = useRouter();
   const queryClient = useQueryClient();
   const setCurrentInterview = useInterviewStore((state) => state.setCurrentInterview);
+  const setCurrentTurn = useInterviewStore((state) => state.setCurrentTurn);
   const addToast = useUIStore((state) => state.addToast);
 
   return useMutation({
     mutationFn: (payload: InterviewSetupInput) => interviewService.createInterview(payload),
     onSuccess: (data) => {
-      setCurrentInterview(data);
+      setCurrentInterview(data.interview);
+      setCurrentTurn(data.session?.currentTurn ?? null);
       void queryClient.invalidateQueries({ queryKey: ["interviews", "history"] });
       addToast({
         title: "Interview created",
-        description: "Your live interview session is ready.",
+        description: "Your voice interview session is ready.",
         variant: "success"
       });
-      router.push(`/interview/${data.id ?? data._id}`);
+      router.push(`/interview/${data.interview.id ?? data.interview._id}`);
     },
     onError: (error) => {
       addToast({
@@ -66,7 +68,7 @@ export function useCreateInterview() {
 }
 
 export function useInterview(id: string) {
-  const setCurrentInterview = useInterviewStore((state) => state.setCurrentInterview);
+  const setVoiceProgress = useInterviewStore((state) => state.setVoiceProgress);
   const query = useQuery({
     queryKey: ["interviews", id],
     queryFn: () => interviewService.getInterview(id),
@@ -76,9 +78,13 @@ export function useInterview(id: string) {
 
   useEffect(() => {
     if (query.data) {
-      setCurrentInterview(query.data);
+      setVoiceProgress({
+        interview: query.data.interview,
+        currentTurn: query.data.currentTurn ?? null,
+        report: query.data.report ?? null
+      });
     }
-  }, [query.data, setCurrentInterview]);
+  }, [query.data, setVoiceProgress]);
 
   return query;
 }
@@ -90,73 +96,48 @@ export function useInterviewHistory() {
   });
 }
 
-export function useSubmitAnswer(id: string) {
+export function useSubmitVoiceAnswer(id: string) {
   const queryClient = useQueryClient();
-  const appendAnswer = useInterviewStore((state) => state.appendAnswer);
+  const setVoiceProgress = useInterviewStore((state) => state.setVoiceProgress);
   const addToast = useUIStore((state) => state.addToast);
-
-  return useMutation({
-    mutationFn: (payload: InterviewAnswerInput) => interviewService.submitAnswer(id, payload),
-    onMutate: async (payload) => {
-      appendAnswer({ answer: payload.answer });
-      await queryClient.cancelQueries({ queryKey: ["interviews", id] });
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["interviews", id], data);
-      addToast({
-        title: "Answer submitted",
-        description: "Your latest answer was sent for evaluation.",
-        variant: "success"
-      });
-    },
-    onError: (error) => {
-      addToast({
-        title: "Answer submission failed",
-        description: error instanceof Error ? error.message : "Please retry.",
-        variant: "error"
-      });
-    }
-  });
-}
-
-export function useAppendTranscript(id: string) {
-  const queryClient = useQueryClient();
-  const appendTranscript = useInterviewStore((state) => state.appendTranscript);
-
-  return useMutation({
-    mutationFn: (entries: TranscriptEntry[]) => interviewService.appendTranscript(id, entries),
-    onMutate: async (entries) => {
-      appendTranscript(entries);
-      await queryClient.cancelQueries({ queryKey: ["interviews", id] });
-    },
-    onSuccess: (data) => {
-      queryClient.setQueryData(["interviews", id], data);
-    }
-  });
-}
-
-export function useCompleteInterview(id: string) {
   const router = useRouter();
-  const queryClient = useQueryClient();
-  const setCurrentInterview = useInterviewStore((state) => state.setCurrentInterview);
-  const addToast = useUIStore((state) => state.addToast);
 
   return useMutation({
-    mutationFn: () => interviewService.completeInterview(id),
+    mutationFn: ({ payload, onProgress }: { payload: InterviewVoiceAnswerInput; onProgress?: (progress: number) => void }) =>
+      interviewService.submitVoiceAnswer(id, payload, onProgress),
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ["interviews", id] });
+    },
     onSuccess: (data) => {
-      setCurrentInterview(data);
+      setVoiceProgress({
+        interview: data.interview,
+        currentTurn: data.completed ? null : (data.currentTurn ?? null),
+        report: data.report ?? null
+      });
       queryClient.setQueryData(["interviews", id], data);
-      void queryClient.invalidateQueries({ queryKey: ["interviews", "history"] });
+      if (data.completed) {
+        addToast({
+          title: "Interview completed",
+          description: "Your final report is ready.",
+          variant: "success"
+        });
+        const reportId =
+          (typeof data.report === "object" && data.report && ("id" in data.report || "_id" in data.report)
+            ? String((data.report as { id?: string; _id?: string }).id ?? (data.report as { _id?: string })._id)
+            : null) ?? id;
+        router.push(`/reports/${reportId}`);
+        return;
+      }
+
       addToast({
-        title: "Interview completed",
-        description: "Your report is being prepared.",
+        title: "Voice answer processed",
+        description: "The backend returned the next interview turn.",
         variant: "success"
       });
-      router.push(`/reports/${data.reportId ?? id}`);
     },
     onError: (error) => {
       addToast({
-        title: "Unable to complete interview",
+        title: "Voice answer failed",
         description: error instanceof Error ? error.message : "Please retry.",
         variant: "error"
       });

@@ -3,6 +3,8 @@
 import { LoadingSkeleton } from "@/components/system/loading-skeleton";
 import { GlassCard } from "@/components/ui/glass-card";
 import { useReport } from "@/hooks/useReports";
+import { useInterviewStore } from "@/store/interview.store";
+import type { InterviewReport } from "@/types/report.types";
 
 type ReportPageProps = {
   reportId: string;
@@ -10,7 +12,9 @@ type ReportPageProps = {
 
 export function ReportPage({ reportId }: ReportPageProps) {
   const reportQuery = useReport(reportId);
-  const metrics = reportQuery.data?.metrics ?? reportQuery.data?.analytics ?? [];
+  const finalReport = useInterviewStore((state) => state.finalReport);
+  const report = (reportQuery.data ?? finalReport) as InterviewReport | null;
+  const metrics = report?.metrics ?? report?.analytics ?? [];
 
   return (
     <section className="container-shell pb-24 pt-10">
@@ -23,7 +27,7 @@ export function ReportPage({ reportId }: ReportPageProps) {
           </p>
         </div>
 
-        {reportQuery.isLoading ? (
+        {reportQuery.isLoading && !report ? (
           <div className="grid gap-6">
             <LoadingSkeleton className="h-44 w-full" />
             <div className="grid gap-6 md:grid-cols-3">
@@ -32,16 +36,16 @@ export function ReportPage({ reportId }: ReportPageProps) {
               <LoadingSkeleton className="h-36 w-full" />
             </div>
           </div>
-        ) : reportQuery.data ? (
+        ) : report ? (
           <div className="grid gap-6">
             <GlassCard className="rounded-[32px] p-8">
               <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
                 <div>
                   <div className="text-sm uppercase tracking-[0.22em] text-slate-400">Overall score</div>
-                  <div className="mt-3 text-6xl font-bold text-white">{reportQuery.data.score ?? "--"}</div>
+                  <div className="mt-3 text-6xl font-bold text-white">{report.score ?? "--"}</div>
                 </div>
                 <div className="max-w-2xl text-sm leading-7 text-slate-300">
-                  {reportQuery.data.summary ?? "Detailed backend-generated feedback will appear here after interview completion."}
+                  {report.summary ?? "Detailed backend-generated feedback will appear here after interview completion."}
                 </div>
               </div>
             </GlassCard>
@@ -58,15 +62,15 @@ export function ReportPage({ reportId }: ReportPageProps) {
                 <>
                   <GlassCard className="rounded-[28px] p-6">
                     <div className="text-sm text-slate-400">Strengths</div>
-                    <div className="mt-3 text-base text-white">{reportQuery.data.strengths?.join(", ") || "Pending"}</div>
+                    <div className="mt-3 text-base text-white">{report.strengths?.join(", ") || "Pending"}</div>
                   </GlassCard>
                   <GlassCard className="rounded-[28px] p-6">
                     <div className="text-sm text-slate-400">Improvements</div>
-                    <div className="mt-3 text-base text-white">{reportQuery.data.improvements?.join(", ") || "Pending"}</div>
+                    <div className="mt-3 text-base text-white">{report.improvements?.join(", ") || "Pending"}</div>
                   </GlassCard>
                   <GlassCard className="rounded-[28px] p-6">
                     <div className="text-sm text-slate-400">Role</div>
-                    <div className="mt-3 text-base text-white">{reportQuery.data.role ?? "Interview session"}</div>
+                    <div className="mt-3 text-base text-white">{report.role ?? "Interview session"}</div>
                   </GlassCard>
                 </>
               )}

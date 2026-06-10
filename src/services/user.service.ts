@@ -6,16 +6,22 @@ import type { UpdateProfileInput, UserHistoryItem, UserProfile } from "@/types/u
 export const userService = {
   async getProfile() {
     const response = await apiClient.get<ApiResponse<UserProfile>>("/api/users/profile");
-    return unwrapResponse(response).data;
+    const body = unwrapResponse(response);
+    return (body.data as { user?: UserProfile }).user ?? body.data;
   },
 
   async updateProfile(payload: UpdateProfileInput) {
     const response = await apiClient.put<ApiResponse<UserProfile>>("/api/users/profile", payload);
-    return unwrapResponse(response).data;
+    const body = unwrapResponse(response);
+    return (body.data as { user?: UserProfile }).user ?? body.data;
   },
 
   async getHistory() {
-    const response = await apiClient.get<ApiResponse<UserHistoryItem[]>>("/api/users/history");
-    return unwrapResponse(response).data;
+    const response = await apiClient.get<ApiResponse<{ total?: number; history?: UserHistoryItem[] } | UserHistoryItem[]>>(
+      "/api/users/history"
+    );
+    const body = unwrapResponse(response);
+
+    return Array.isArray(body.data) ? body.data : (body.data.history ?? []);
   }
 };

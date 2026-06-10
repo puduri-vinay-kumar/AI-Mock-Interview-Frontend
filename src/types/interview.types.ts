@@ -8,32 +8,26 @@ export type InterviewSetupInput = {
   role: string;
   experienceLevel: ExperienceLevel;
   interviewType: InterviewType;
-  duration: number;
+  questionCount: number;
   resumeId?: string;
   previousScore?: number;
 };
 
-export type TranscriptSpeaker = "ai" | "user" | "system";
-
-export type TranscriptEntry = {
-  speaker: TranscriptSpeaker;
-  text: string;
+export type InterviewTurn = {
+  sessionId: string;
+  questionId: string;
+  question: string;
+  topic?: string;
+  difficulty?: string;
+  type?: string;
+  followUpPossible?: boolean;
+  audioUrl?: string;
+  voiceMode?: boolean;
 };
 
-export type InterviewAnswerInput = {
-  answer: string;
-  transcript?: string;
+export type InterviewVoiceAnswerInput = {
+  audio: File;
   durationSeconds?: number;
-};
-
-export type InterviewStatusUpdateInput = {
-  status?: InterviewStatus;
-  answers?: Array<{
-    questionId?: string;
-    question?: string;
-    answer?: string;
-  }>;
-  liveTranscript?: TranscriptEntry[];
 };
 
 export type InterviewSession = {
@@ -42,31 +36,51 @@ export type InterviewSession = {
   role?: string;
   experienceLevel?: ExperienceLevel | string;
   interviewType?: InterviewType | string;
+  questionCount?: number;
   duration?: number;
   status?: InterviewStatus | string;
-  questions?: string[];
-  transcript?: TranscriptEntry[];
-  liveTranscript?: TranscriptEntry[];
-  answers?: Array<{
+  reportId?: string;
+  sessionId?: string;
+  currentDifficulty?: string;
+  questions?: Array<{
     questionId?: string;
     question?: string;
-    answer?: string;
-    feedback?: string;
-    score?: number;
+    type?: string;
+    topic?: string;
+    difficulty?: string;
+    followUpPossible?: boolean;
+    source?: string;
+    expectedAnswer?: string;
   }>;
-  reportId?: string;
   createdAt?: string;
   updatedAt?: string;
   [key: string]: unknown;
 };
 
+export type InterviewCreateResponse = {
+  interview: InterviewSession;
+  session?: {
+    currentTurn?: InterviewTurn;
+    [key: string]: unknown;
+  };
+};
+
+export type InterviewResumeResponse = {
+  interview: InterviewSession;
+  currentTurn?: InterviewTurn;
+  completed?: boolean;
+  report?: Record<string, unknown>;
+};
+
 export type InterviewStoreState = {
   currentInterview: InterviewSession | null;
+  currentTurn: InterviewTurn | null;
+  finalReport: Record<string, unknown> | null;
   resumeId: string | null;
   parsedSkills: string[];
   setCurrentInterview: (interview: InterviewSession | null) => void;
+  setCurrentTurn: (turn: InterviewTurn | null) => void;
+  setVoiceProgress: (payload: { interview: InterviewSession; currentTurn?: InterviewTurn | null; report?: Record<string, unknown> | null }) => void;
   setResumeAnalysis: (resumeId: string | null, parsedSkills?: string[]) => void;
-  appendTranscript: (entries: TranscriptEntry[]) => void;
-  appendAnswer: (answer: { question?: string; answer?: string }) => void;
   resetInterview: () => void;
 };

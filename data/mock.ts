@@ -86,7 +86,7 @@ export const setupOptions = {
   ],
   experienceLevels: ["0-1 Years", "1-3 Years", "3-5 Years", "5+ Years"],
   interviewTypes: ["Technical", "Behavioral", "System Design", "HR Round"],
-  durations: ["15 Minutes", "30 Minutes", "45 Minutes", "60 Minutes"]
+  questionCounts: ["3 Questions", "5 Questions", "7 Questions", "10 Questions"]
 };
 
 export const setupHighlights = [
@@ -98,7 +98,7 @@ export const setupHighlights = [
   {
     icon: Clock3,
     title: "Focused practice flow",
-    description: "Pick the role, round style, and duration that matches your next real interview."
+    description: "Pick the role, round style, and question count that matches your next real interview."
   },
   {
     icon: Layers3,

@@ -1,49 +1,68 @@
 import { apiClient } from "@/lib/axios";
 import { unwrapResponse } from "@/services/api";
 import type {
-  InterviewAnswerInput,
+  InterviewCreateResponse,
+  InterviewResumeResponse,
   InterviewSession,
   InterviewSetupInput,
-  InterviewStatusUpdateInput,
-  TranscriptEntry
+  InterviewVoiceAnswerInput
 } from "@/types/interview.types";
 import type { ApiResponse } from "@/types/api.types";
 
 export const interviewService = {
   async createInterview(payload: InterviewSetupInput) {
-    const response = await apiClient.post<ApiResponse<InterviewSession>>("/api/interviews/create", payload);
+    const response = await apiClient.post<ApiResponse<InterviewCreateResponse>>("/api/interviews/create", payload);
     return unwrapResponse(response).data;
   },
 
   async getInterview(id: string) {
-    const response = await apiClient.get<ApiResponse<InterviewSession>>(`/api/interviews/${id}`);
-    return unwrapResponse(response).data;
+    const response = await apiClient.get<ApiResponse<InterviewResumeResponse>>(`/api/interviews/${id}`);
+    const body = unwrapResponse(response);
+    const normalized =
+      "interview" in body.data && body.data.interview
+        ? body.data
+        : ({
+            interview: body.data as unknown as InterviewSession,
+            currentTurn:
+              typeof body.data === "object" && body.data !== null && "currentTurn" in body.data
+                ? (body.data.currentTurn as InterviewResumeResponse["currentTurn"])
+                : undefined
+          } satisfies InterviewResumeResponse);
+    return normalized;
   },
 
   async getInterviewHistory() {
-    const response = await apiClient.get<ApiResponse<InterviewSession[]>>("/api/interviews/history");
-    return unwrapResponse(response).data;
+    const response = await apiClient.get<ApiResponse<{ total?: number; interviews?: InterviewSession[] } | InterviewSession[]>>(
+      "/api/interviews/history"
+    );
+    const body = unwrapResponse(response);
+    return Array.isArray(body.data) ? body.data : (body.data.interviews ?? []);
   },
 
-  async submitAnswer(id: string, payload: InterviewAnswerInput) {
-    const response = await apiClient.post<ApiResponse<InterviewSession>>(`/api/interviews/${id}/answer`, payload);
-    return unwrapResponse(response).data;
-  },
+  async submitVoiceAnswer(id: string, payload: InterviewVoiceAnswerInput, onProgress?: (progress: number) => void) {
+    const formData = new FormData();
+    formData.append("audio", payload.audio);
 
-  async appendTranscript(id: string, entries: TranscriptEntry[]) {
-    const response = await apiClient.post<ApiResponse<InterviewSession>>(`/api/interviews/${id}/transcript`, {
-      entries
-    });
-    return unwrapResponse(response).data;
-  },
+    if (typeof payload.durationSeconds === "number") {
+      formData.append("durationSeconds", String(payload.durationSeconds));
+    }
 
-  async completeInterview(id: string) {
-    const response = await apiClient.post<ApiResponse<InterviewSession>>(`/api/interviews/${id}/complete`);
-    return unwrapResponse(response).data;
-  },
+    const response = await apiClient.post<ApiResponse<InterviewResumeResponse>>(
+      `/api/interviews/${id}/answer-voice`,
+      formData,
+      {
+        headers: {
+          "Content-Type": "multipart/form-data"
+        },
+        onUploadProgress: (event) => {
+          if (!event.total || !onProgress) {
+            return;
+          }
 
-  async updateInterviewStatus(id: string, payload: InterviewStatusUpdateInput) {
-    const response = await apiClient.put<ApiResponse<InterviewSession>>(`/api/interviews/${id}/status`, payload);
+          onProgress(Math.round((event.loaded * 100) / event.total));
+        }
+      }
+    );
     return unwrapResponse(response).data;
   }
 };

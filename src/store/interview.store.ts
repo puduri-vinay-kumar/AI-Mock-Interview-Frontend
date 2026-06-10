@@ -2,39 +2,28 @@
 
 import { create } from "zustand";
 
-import type { InterviewSession, InterviewStoreState, TranscriptEntry } from "@/types/interview.types";
-
-function getTranscript(interview: InterviewSession | null) {
-  return interview?.liveTranscript ?? interview?.transcript ?? [];
-}
+import type { InterviewSession, InterviewStoreState } from "@/types/interview.types";
 
 export const useInterviewStore = create<InterviewStoreState>((set) => ({
   currentInterview: null,
+  currentTurn: null,
+  finalReport: null,
   resumeId: null,
   parsedSkills: [],
   setCurrentInterview: (interview) => set({ currentInterview: interview }),
+  setCurrentTurn: (turn) => set({ currentTurn: turn }),
+  setVoiceProgress: ({ interview, currentTurn = null, report = null }) =>
+    set({
+      currentInterview: interview,
+      currentTurn,
+      finalReport: report
+    }),
   setResumeAnalysis: (resumeId, parsedSkills = []) => set({ resumeId, parsedSkills }),
-  appendTranscript: (entries: TranscriptEntry[]) =>
-    set((state) => ({
-      currentInterview: state.currentInterview
-        ? {
-            ...state.currentInterview,
-            liveTranscript: [...getTranscript(state.currentInterview), ...entries]
-          }
-        : state.currentInterview
-    })),
-  appendAnswer: (answer) =>
-    set((state) => ({
-      currentInterview: state.currentInterview
-        ? {
-            ...state.currentInterview,
-            answers: [...(state.currentInterview.answers ?? []), answer]
-          }
-        : state.currentInterview
-    })),
   resetInterview: () =>
     set({
       currentInterview: null,
+      currentTurn: null,
+      finalReport: null,
       resumeId: null,
       parsedSkills: []
     })

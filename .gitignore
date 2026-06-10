@@ -1,5 +1,5 @@
 node_modules
-constants.ts
+
 # Dependencies
 /node_modules
 /.pnp
@@ -11,8 +11,11 @@ constants.ts
 /build
 
 # Local Environment Variables (Sensitive Data)
-.env*.local
 .env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 .env.production
 
 # Vercel Deployment Metadata
@@ -37,3 +40,8 @@ node_modules/
 .dist/
 out/
 build/
+sample-audio.wav
+sample-resume.pdf
+devserver.log
+devserver.err.log
+
