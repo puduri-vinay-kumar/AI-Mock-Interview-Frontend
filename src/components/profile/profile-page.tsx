@@ -118,13 +118,17 @@ export function ProfilePage() {
                         <div className="mt-1 text-sm text-slate-400">{item.interviewType ?? "Mixed round"}</div>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="text-sm text-emerald-300">Score: {item.score ?? item.report?.score ?? "--"}</div>
-                        <Link
-                          href={`/reports/${item.reportId ?? item.report?.id ?? item.report?._id ?? item.id ?? item._id}`}
-                          className="text-sm font-medium text-violet-200"
-                        >
-                          Open report
-                        </Link>
+                        <div className="text-sm text-emerald-300">
+                          Score: {item.score ?? item.overallScore ?? item.report?.overallScore ?? "--"}
+                        </div>
+                        {item.report?._id || item.reportId ? (
+                          <Link
+                            href={`/reports/${item.report?._id ?? item.reportId}`}
+                            className="text-sm font-medium text-violet-200"
+                          >
+                            Open report
+                          </Link>
+                        ) : null}
                       </div>
                     </div>
                   </div>

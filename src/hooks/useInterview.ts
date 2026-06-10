@@ -18,8 +18,8 @@ export function useResumeUpload() {
     mutationFn: async ({ file, onProgress }: { file: File; onProgress?: (progress: number) => void }) =>
       uploadService.uploadResume(file, onProgress),
     onSuccess: (data) => {
-      const resumeId = data.resumeId ?? data.id ?? data._id ?? null;
-      const parsedSkills = data.parsedSkills ?? data.skills ?? [];
+      const resumeId = data.resume?._id ?? null;
+      const parsedSkills = data.analysis?.skills ?? data.resume?.extractedSkills ?? data.resume?.parsedData?.skills ?? [];
       setResumeAnalysis(resumeId, parsedSkills);
       addToast({
         title: "Resume uploaded",
@@ -55,7 +55,7 @@ export function useCreateInterview() {
         description: "Your voice interview session is ready.",
         variant: "success"
       });
-      router.push(`/interview/${data.interview.id ?? data.interview._id}`);
+      router.push(`/interview/${data.interview._id ?? data.interview.id}`);
     },
     onError: (error) => {
       addToast({
@@ -122,8 +122,10 @@ export function useSubmitVoiceAnswer(id: string) {
           variant: "success"
         });
         const reportId =
-          (typeof data.report === "object" && data.report && ("id" in data.report || "_id" in data.report)
-            ? String((data.report as { id?: string; _id?: string }).id ?? (data.report as { _id?: string })._id)
+          (typeof data.report === "object" && data.report && "_id" in data.report
+            ? String((data.report as { _id?: string })._id)
+            : typeof data.report === "object" && data.report && "id" in data.report
+              ? String((data.report as { id?: string }).id)
             : null) ?? id;
         router.push(`/reports/${reportId}`);
         return;

@@ -7,6 +7,8 @@ export type AuthUser = {
   email: string;
   role?: UserRole;
   avatar?: string;
+  interviewsAttempted?: number;
+  averageScore?: number;
   createdAt?: string;
   updatedAt?: string;
 };

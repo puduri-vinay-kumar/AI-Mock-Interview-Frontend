@@ -17,7 +17,7 @@ export function InterviewHistoryPage() {
           <h1 className="mt-3 text-4xl font-bold text-white">Interview sessions</h1>
           <p className="mt-3 max-w-2xl text-slate-300">
             This screen is powered by the live `GET /api/interviews/history` endpoint and links each session back into
-            the interview room or report view.
+            the interview room.
           </p>
         </div>
 
@@ -51,14 +51,6 @@ export function InterviewHistoryPage() {
                         >
                           Open interview
                         </Link>
-                        {item.reportId ? (
-                          <Link
-                            href={`/reports/${item.reportId}`}
-                            className="rounded-2xl border border-violet-400/20 bg-violet-500/10 px-4 py-3 text-sm text-violet-100"
-                          >
-                            Open report
-                          </Link>
-                        ) : null}
                       </div>
                     </div>
                   </div>

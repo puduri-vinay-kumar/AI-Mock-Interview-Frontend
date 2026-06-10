@@ -37,7 +37,6 @@ export type InterviewSession = {
   experienceLevel?: ExperienceLevel | string;
   interviewType?: InterviewType | string;
   questionCount?: number;
-  duration?: number;
   status?: InterviewStatus | string;
   reportId?: string;
   sessionId?: string;

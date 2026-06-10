@@ -19,6 +19,7 @@ export type UserHistoryItem = {
   role?: string;
   interviewType?: string;
   score?: number;
+  overallScore?: number;
   createdAt?: string;
   [key: string]: unknown;
 };
