@@ -1,13 +1,12 @@
 "use client";
 
 import { Bot, Camera, Mic, MicOff, Play, RefreshCw, VideoOff } from "lucide-react";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LoadingSkeleton } from "@/components/system/loading-skeleton";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useInterview, useSubmitVoiceAnswer } from "@/hooks/useInterview";
-import { API_BASE_URL } from "@/lib/constants";
 import { useAuthStore } from "@/store/auth.store";
 import { useInterviewStore } from "@/store/interview.store";
 import { useUIStore } from "@/store/ui.store";
@@ -15,22 +14,6 @@ import { useUIStore } from "@/store/ui.store";
 type InterviewRoomProps = {
   interviewId: string;
 };
-
-function resolveAudioUrl(audioUrl?: string) {
-  if (!audioUrl) {
-    return null;
-  }
-
-  if (audioUrl.startsWith("mock://")) {
-    return null;
-  }
-
-  if (audioUrl.startsWith("http://") || audioUrl.startsWith("https://")) {
-    return audioUrl;
-  }
-
-  return new URL(audioUrl, API_BASE_URL).toString();
-}
 
 function getPreferredAudioMimeType() {
   if (typeof MediaRecorder === "undefined") {
@@ -52,12 +35,14 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
 
   const [isRequestingMedia, setIsRequestingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [isCameraReady, setIsCameraReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [showQuestionText, setShowQuestionText] = useState(false);
-  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [audioPlaybackError, setAudioPlaybackError] = useState<string | null>(null);
+  const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
+  const [speechError, setSpeechError] = useState<string | null>(null);
+  const [canRecordAnswer, setCanRecordAnswer] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -65,11 +50,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
 
   const questionText = currentTurn?.question ?? "";
-  const questionAudioUrl = currentTurn?.audioUrl;
-  const resolvedAudioUrl = useMemo(() => resolveAudioUrl(questionAudioUrl), [questionAudioUrl]);
+  const textToSpeak = currentTurn?.speechText || currentTurn?.question || "";
   const currentQuestionNumber = Array.isArray(currentInterview?.questions) && currentTurn?.questionId
     ? Math.max(
         1,
@@ -97,6 +81,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
           },
           audio: false
         });
+        setIsCameraReady(true);
         attachCameraStream(cameraStreamRef.current);
       }
 
@@ -127,7 +112,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop());
       cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
       microphoneStreamRef.current?.getTracks().forEach((track) => track.stop());
-      audioRef.current?.pause();
+      if (typeof window !== "undefined") {
+        window.speechSynthesis.cancel();
+      }
+      setIsCameraReady(false);
     };
   }, [requestMediaAccess]);
 
@@ -135,40 +123,51 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
     attachCameraStream(cameraStreamRef.current);
   }, [attachCameraStream]);
 
-  const playCurrentTurnAudio = useCallback(async () => {
-    if (!questionAudioUrl) {
-      setAudioPlaybackError("This turn did not include an audio prompt.");
+  const speakCurrentTurn = useCallback(() => {
+    if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") {
+      setSpeechError("Browser speech synthesis is not available in this environment.");
+      setIsSpeakingQuestion(false);
+      setCanRecordAnswer(true);
       return;
     }
 
-    if (!resolvedAudioUrl) {
-      setAudioPlaybackError(
-        questionAudioUrl.startsWith("mock://")
-          ? "The backend returned a mock audio URL. Enable real audio generation in the backend for live playback."
-          : "Unable to resolve the question audio URL."
-      );
+    if (!textToSpeak) {
+      setSpeechError("This turn did not include any question text to speak.");
+      setIsSpeakingQuestion(false);
+      setCanRecordAnswer(false);
       return;
     }
 
-    try {
-      setAudioPlaybackError(null);
-      setIsPlayingAudio(true);
-      audioRef.current?.pause();
-      const nextAudio = new Audio(resolvedAudioUrl);
-      audioRef.current = nextAudio;
-      nextAudio.onended = () => setIsPlayingAudio(false);
-      await nextAudio.play();
-    } catch (error) {
-      setAudioPlaybackError(error instanceof Error ? error.message : "Audio playback failed.");
-      setIsPlayingAudio(false);
-    }
-  }, [questionAudioUrl, resolvedAudioUrl]);
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(textToSpeak);
+    utterance.lang = "en-US";
+    utterance.rate = 1;
+    utterance.pitch = 1;
+    utterance.onstart = () => {
+      setSpeechError(null);
+      setIsSpeakingQuestion(true);
+      setCanRecordAnswer(false);
+    };
+    utterance.onend = () => {
+      setIsSpeakingQuestion(false);
+      setCanRecordAnswer(true);
+    };
+    utterance.onerror = () => {
+      setSpeechError("Browser text-to-speech could not play this question.");
+      setIsSpeakingQuestion(false);
+      setCanRecordAnswer(true);
+    };
+    speechUtteranceRef.current = utterance;
+    window.speechSynthesis.speak(utterance);
+  }, [textToSpeak]);
 
   useEffect(() => {
-    if (currentTurn?.audioUrl) {
-      void playCurrentTurnAudio();
+    if (currentTurn) {
+      setShowQuestionText(false);
+      setCanRecordAnswer(false);
+      speakCurrentTurn();
     }
-  }, [currentTurn?.audioUrl, playCurrentTurnAudio]);
+  }, [currentTurn, speakCurrentTurn]);
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) {
@@ -181,7 +180,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, []);
 
   const startRecording = async () => {
-    if (isRecording || submitVoiceAnswer.isPending) {
+    if (isRecording || submitVoiceAnswer.isPending || !canRecordAnswer) {
       return;
     }
 
@@ -260,13 +259,13 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
             <p className="text-sm font-semibold uppercase tracking-[0.24em] text-violet-200/80">Voice interview</p>
             <h1 className="mt-3 text-4xl font-bold text-white">{currentInterview?.role ?? data?.interview?.role ?? "Interview session"}</h1>
             <p className="mt-3 max-w-2xl text-slate-300">
-              The AI asks each question with voice, your mic captures the response, and the backend handles transcription,
-              evaluation, and next-question decisions automatically.
+              The backend generates each question, the browser speaks it out loud, and your mic response is uploaded for
+              evaluation and next-turn decisions automatically.
             </p>
           </div>
 
           <div className="flex flex-wrap gap-3">
-            <GlowButton type="button" variant="secondary" onClick={() => void playCurrentTurnAudio()}>
+            <GlowButton type="button" variant="secondary" onClick={speakCurrentTurn}>
               <Play className="size-4" />
               Replay AI Question
             </GlowButton>
@@ -293,10 +292,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       <Bot className="size-4" />
                       AI Interviewer
                     </div>
-                    <h2 className="mt-5 text-3xl font-semibold text-white">Audio-led question flow</h2>
+                    <h2 className="mt-5 text-3xl font-semibold text-white">Browser-spoken question flow</h2>
                     <p className="mt-3 max-w-lg text-sm leading-7 text-slate-300">
-                      Questions are delivered through backend-generated voice prompts. Text is hidden by default so the
-                      experience feels closer to a real online interview.
+                      Questions come from the backend as text, then your browser speaks them immediately. This keeps the
+                      interview moving even when the backend does not provide audio files.
                     </p>
                   </div>
 
@@ -305,10 +304,12 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       <div className="absolute inset-6 rounded-full border border-white/10 bg-slate-950/70" />
                       <div className="relative z-10 flex flex-col items-center gap-3">
                         <div className="rounded-full border border-violet-400/20 bg-violet-500/10 p-5 text-violet-200">
-                          <Bot className={`size-16 ${isPlayingAudio ? "animate-pulse" : ""}`} />
+                          <Bot className={`size-16 ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
                         </div>
                         <div className="text-center">
-                          <div className="text-lg font-semibold text-white">{isPlayingAudio ? "Speaking..." : "Waiting..."}</div>
+                          <div className="text-lg font-semibold text-white">
+                            {isSpeakingQuestion ? "Speaking..." : canRecordAnswer ? "Your turn" : "Preparing..."}
+                          </div>
                           <div className="mt-1 text-sm text-slate-400">
                             {currentTurn?.voiceMode ? "Voice mode enabled" : "Voice mode pending"}
                           </div>
@@ -336,10 +337,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       <div className="text-sm leading-7 text-slate-200">{questionText || "No text question available."}</div>
                     ) : (
                       <div className="text-sm text-slate-400">
-                        Question text is hidden by default. Use Replay if you want to hear it again.
+                        Question text is hidden by default. Use Replay if you want the browser to speak it again.
                       </div>
                     )}
-                    {audioPlaybackError ? <div className="text-xs text-amber-300">{audioPlaybackError}</div> : null}
+                    {speechError ? <div className="text-xs text-amber-300">{speechError}</div> : null}
                   </div>
                 </div>
               </GlassCard>
@@ -361,7 +362,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   </div>
 
                   <div className="relative flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60">
-                    {cameraStreamRef.current ? (
+                    {isCameraReady ? (
                       <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
                     ) : (
                       <div className="flex h-full items-center justify-center">
@@ -372,7 +373,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
-                      Camera {cameraStreamRef.current ? "connected" : "waiting"}
+                      Camera {isCameraReady ? "connected" : "waiting"}
                     </div>
                   </div>
 
@@ -381,10 +382,16 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       type="button"
                       className="h-14 justify-center"
                       onClick={() => void startRecording()}
-                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia}
+                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !canRecordAnswer}
                     >
                       <Mic className="size-4" />
-                      {isRequestingMedia ? "Checking devices..." : isRecording ? "Recording..." : "Start Answer"}
+                      {isRequestingMedia
+                        ? "Checking devices..."
+                        : isRecording
+                          ? "Recording..."
+                          : canRecordAnswer
+                            ? "Start Answer"
+                            : "Wait for AI"}
                     </GlowButton>
                     <GlowButton
                       type="button"
@@ -399,8 +406,8 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                    The backend decides whether to ask a follow-up or finish the interview. No transcript is shown in the
-                    UI, and completion is based on `questionCount`.
+                    The browser speaks the backend-generated question, then recording unlocks after speech ends. No
+                    transcript is shown in the UI, and completion is based on `questionCount`.
                   </div>
                   {mediaError ? <div className="mt-3 text-sm text-rose-300">{mediaError}</div> : null}
                   {finalReport ? <div className="mt-3 text-xs text-emerald-300">Final report received from backend.</div> : null}

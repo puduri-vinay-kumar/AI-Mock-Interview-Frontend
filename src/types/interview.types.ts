@@ -17,6 +17,7 @@ export type InterviewTurn = {
   sessionId: string;
   questionId: string;
   question: string;
+  speechText?: string;
   topic?: string;
   difficulty?: string;
   type?: string;
