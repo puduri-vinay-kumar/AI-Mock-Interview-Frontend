@@ -8,6 +8,8 @@ import { authService } from "@/services/auth.service";
 import type { ApiErrorLike } from "@/types/api.types";
 import type { AuthPayload, AuthStoreState } from "@/types/auth.types";
 
+const AUTH_BOOTSTRAP_TIMEOUT_MS = 4000;
+
 export const useAuthStore = create<AuthStoreState>((set) => ({
   user: null,
   token: null,
@@ -47,6 +49,17 @@ export const useAuthStore = create<AuthStoreState>((set) => ({
   }
 }));
 
+function withBootstrapTimeout<T>(promise: Promise<T>) {
+  return Promise.race<T>([
+    promise,
+    new Promise<T>((_, reject) => {
+      setTimeout(() => {
+        reject(new Error("Session restore timed out."));
+      }, AUTH_BOOTSTRAP_TIMEOUT_MS);
+    })
+  ]);
+}
+
 export async function bootstrapAuth() {
   const store = useAuthStore.getState();
   const token = getStoredToken();
@@ -62,28 +75,47 @@ export async function bootstrapAuth() {
     useAuthStore.setState({
       user: cachedUser,
       token,
-      status: "authenticated"
+      status: "authenticated",
+      isHydrated: true
+    });
+    useAuthStore.setState({
+      isBootstrapping: false,
+      bootstrapMessage: null
     });
   } else {
     useAuthStore.setState({
       token,
       status: "loading"
     });
+
+    store.setBootstrapping(true, "Restoring your secure session...");
   }
 
-  store.setBootstrapping(true, "Restoring your secure session...");
-
   try {
-    const user = await authService.getCurrentUser(token);
+    const user = await withBootstrapTimeout(authService.getCurrentUser(token));
     store.setSession({ token, user });
+    useAuthStore.setState({
+      isHydrated: true,
+      isBootstrapping: false,
+      bootstrapMessage: null
+    });
   } catch (error) {
     const message =
       typeof error === "object" && error !== null && "message" in error
         ? (error as ApiErrorLike).message
         : "Your session has expired. Please log in again.";
+
+    if (cachedUser) {
+      useAuthStore.setState({
+        isHydrated: true,
+        isBootstrapping: false,
+        bootstrapMessage: null
+      });
+      return;
+    }
+
     store.clearSession();
     store.setError(message);
-  } finally {
     useAuthStore.setState({
       isHydrated: true,
       isBootstrapping: false,
