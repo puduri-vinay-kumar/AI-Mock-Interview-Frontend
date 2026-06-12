@@ -38,6 +38,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const [isRequestingMedia, setIsRequestingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isVideoPreviewLive, setIsVideoPreviewLive] = useState(false);
   const [isMicrophoneReady, setIsMicrophoneReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
@@ -61,7 +62,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const textToSpeak = currentTurn?.speechText || currentTurn?.question || "";
   const interviewStatus = String(currentInterview?.status ?? data?.interview?.status ?? "scheduled");
   const isCompletedSession = interviewStatus === "completed" && !currentTurn;
-  const isMediaReady = isCameraReady && isMicrophoneReady;
+  const isMediaReady = isVideoPreviewLive && isMicrophoneReady;
   const currentQuestionNumber = Array.isArray(currentInterview?.questions) && currentTurn?.questionId
     ? Math.max(
         1,
@@ -69,11 +70,41 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       )
     : undefined;
 
-  const attachCameraStream = useCallback((stream: MediaStream | null) => {
-    if (videoRef.current) {
-      videoRef.current.srcObject = stream;
+  const playCameraPreview = useCallback(async () => {
+    const videoElement = videoRef.current;
+    if (!videoElement) {
+      return;
+    }
+
+    try {
+      await videoElement.play();
+    } catch {
+      setIsVideoPreviewLive(false);
     }
   }, []);
+
+  const attachCameraStream = useCallback(
+    (stream: MediaStream | null) => {
+      const videoElement = videoRef.current;
+      if (!videoElement) {
+        return;
+      }
+
+      videoElement.autoplay = true;
+      videoElement.muted = true;
+      videoElement.playsInline = true;
+      videoElement.srcObject = stream;
+      setIsVideoPreviewLive(false);
+
+      if (stream) {
+        stream.getVideoTracks().forEach((track) => {
+          track.enabled = true;
+        });
+        void playCameraPreview();
+      }
+    },
+    [playCameraPreview]
+  );
 
   const requestMediaAccess = useCallback(async () => {
     try {
@@ -105,6 +136,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       }
     } catch (error) {
       setIsCameraReady(Boolean(cameraStreamRef.current));
+      setIsVideoPreviewLive(false);
       setIsMicrophoneReady(Boolean(microphoneStreamRef.current));
       setMediaError(error instanceof Error ? error.message : "Unable to access camera or microphone.");
     } finally {
@@ -126,7 +158,11 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       if (typeof window !== "undefined") {
         window.speechSynthesis.cancel();
       }
+      if (videoRef.current) {
+        videoRef.current.srcObject = null;
+      }
       setIsCameraReady(false);
+      setIsVideoPreviewLive(false);
       setIsMicrophoneReady(false);
     };
   }, [requestMediaAccess]);
@@ -442,7 +478,32 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
 
                   <div className="relative flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60">
                     {isCameraReady ? (
-                      <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
+                      <>
+                        <video
+                          ref={videoRef}
+                          autoPlay
+                          muted
+                          playsInline
+                          className="h-full w-full object-cover"
+                          onLoadedMetadata={() => {
+                            void playCameraPreview();
+                          }}
+                          onCanPlay={() => {
+                            void playCameraPreview();
+                          }}
+                          onPlaying={() => {
+                            setIsVideoPreviewLive(true);
+                          }}
+                        />
+                        {!isVideoPreviewLive ? (
+                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
+                            <div className="text-center text-slate-300">
+                              <RefreshCw className="mx-auto size-10 animate-spin text-cyan-200" />
+                              <p className="mt-4 text-sm">Starting camera preview...</p>
+                            </div>
+                          </div>
+                        ) : null}
+                      </>
                     ) : (
                       <div className="flex h-full items-center justify-center p-6">
                         <StatePanel
@@ -463,7 +524,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
-                      Camera {isCameraReady ? "connected" : "waiting"}
+                      Camera {isVideoPreviewLive ? "live" : isCameraReady ? "starting" : "waiting"}
                     </div>
                   </div>
 
