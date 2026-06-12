@@ -1,9 +1,11 @@
 "use client";
 
-import { Bot, Camera, Mic, MicOff, Play, RefreshCw, VideoOff } from "lucide-react";
+import { AlertTriangle, Bot, Camera, Mic, MicOff, Play, RefreshCw, VideoOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LoadingSkeleton } from "@/components/system/loading-skeleton";
+import { PageHeader } from "@/components/system/page-header";
+import { StatePanel } from "@/components/system/state-panel";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { useInterview, useSubmitVoiceAnswer } from "@/hooks/useInterview";
@@ -25,7 +27,7 @@ function getPreferredAudioMimeType() {
 }
 
 export function InterviewRoom({ interviewId }: InterviewRoomProps) {
-  const { data, isLoading } = useInterview(interviewId);
+  const { data, isLoading, isError, refetch } = useInterview(interviewId);
   const user = useAuthStore((state) => state.user);
   const currentInterview = useInterviewStore((state) => state.currentInterview);
   const currentTurn = useInterviewStore((state) => state.currentTurn);
@@ -36,6 +38,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const [isRequestingMedia, setIsRequestingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [isCameraReady, setIsCameraReady] = useState(false);
+  const [isMicrophoneReady, setIsMicrophoneReady] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingSeconds, setRecordingSeconds] = useState(0);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -43,6 +46,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const [isSpeakingQuestion, setIsSpeakingQuestion] = useState(false);
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [canRecordAnswer, setCanRecordAnswer] = useState(false);
+  const [isScreenReady, setIsScreenReady] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
@@ -51,9 +55,13 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const recordedChunksRef = useRef<BlobPart[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const lastSpokenQuestionIdRef = useRef<string | null>(null);
 
   const questionText = currentTurn?.question ?? "";
   const textToSpeak = currentTurn?.speechText || currentTurn?.question || "";
+  const interviewStatus = String(currentInterview?.status ?? data?.interview?.status ?? "scheduled");
+  const isCompletedSession = interviewStatus === "completed" && !currentTurn;
+  const isMediaReady = isCameraReady && isMicrophoneReady;
   const currentQuestionNumber = Array.isArray(currentInterview?.questions) && currentTurn?.questionId
     ? Math.max(
         1,
@@ -93,8 +101,11 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
           },
           video: false
         });
+        setIsMicrophoneReady(true);
       }
     } catch (error) {
+      setIsCameraReady(Boolean(cameraStreamRef.current));
+      setIsMicrophoneReady(Boolean(microphoneStreamRef.current));
       setMediaError(error instanceof Error ? error.message : "Unable to access camera or microphone.");
     } finally {
       setIsRequestingMedia(false);
@@ -116,12 +127,28 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
         window.speechSynthesis.cancel();
       }
       setIsCameraReady(false);
+      setIsMicrophoneReady(false);
     };
   }, [requestMediaAccess]);
 
   useEffect(() => {
     attachCameraStream(cameraStreamRef.current);
   }, [attachCameraStream]);
+
+  useEffect(() => {
+    if (isLoading) {
+      setIsScreenReady(false);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      setIsScreenReady(true);
+    }, 150);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+    };
+  }, [isLoading]);
 
   const speakCurrentTurn = useCallback(() => {
     if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") {
@@ -162,12 +189,24 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, [textToSpeak]);
 
   useEffect(() => {
-    if (currentTurn) {
-      setShowQuestionText(false);
-      setCanRecordAnswer(false);
-      speakCurrentTurn();
+    if (!currentTurn) {
+      lastSpokenQuestionIdRef.current = null;
+      return;
     }
-  }, [currentTurn, speakCurrentTurn]);
+
+    if (!isScreenReady) {
+      return;
+    }
+
+    if (lastSpokenQuestionIdRef.current === currentTurn.questionId) {
+      return;
+    }
+
+    lastSpokenQuestionIdRef.current = currentTurn.questionId;
+    setShowQuestionText(false);
+    setCanRecordAnswer(false);
+    speakCurrentTurn();
+  }, [currentTurn, isScreenReady, speakCurrentTurn]);
 
   const stopRecording = useCallback(() => {
     if (timerRef.current) {
@@ -254,33 +293,55 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   return (
     <section className="container-shell pb-24 pt-10">
       <div className="mx-auto max-w-7xl">
-        <div className="mb-8 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
-          <div>
-            <p className="text-sm font-semibold uppercase tracking-[0.24em] text-violet-200/80">Voice interview</p>
-            <h1 className="mt-3 text-4xl font-bold text-white">{currentInterview?.role ?? data?.interview?.role ?? "Interview session"}</h1>
-            <p className="mt-3 max-w-2xl text-slate-300">
-              The backend generates each question, the browser speaks it out loud, and your mic response is uploaded for
-              evaluation and next-turn decisions automatically.
-            </p>
-          </div>
-
-          <div className="flex flex-wrap gap-3">
-            <GlowButton type="button" variant="secondary" onClick={speakCurrentTurn}>
-              <Play className="size-4" />
-              Replay AI Question
-            </GlowButton>
-            <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
-              <RefreshCw className="size-4" />
-              Recheck Camera & Mic
-            </GlowButton>
-          </div>
-        </div>
+        <PageHeader
+          eyebrow="Voice interview"
+          title={currentInterview?.role ?? data?.interview?.role ?? "Interview session"}
+          description="Listen to each question, answer in your own voice, and let the platform guide the conversation one turn at a time."
+          meta={
+            <>
+              <span>Status {interviewStatus}</span>
+              <span>{currentInterview?.questionCount ?? "--"} questions planned</span>
+              <span>{currentQuestionNumber ?? "--"} current turn</span>
+            </>
+          }
+          actions={
+            <>
+              <GlowButton type="button" variant="secondary" onClick={speakCurrentTurn}>
+                <Play className="size-4" />
+                Replay question
+              </GlowButton>
+              <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
+                <RefreshCw className="size-4" />
+                Check devices
+              </GlowButton>
+            </>
+          }
+        />
 
         {isLoading ? (
           <div className="grid gap-6 lg:grid-cols-2">
             <LoadingSkeleton className="h-[520px] w-full" />
             <LoadingSkeleton className="h-[520px] w-full" />
           </div>
+        ) : isCompletedSession ? (
+          <GlassCard className="rounded-[36px] p-8 sm:p-10">
+            <div className="mx-auto max-w-3xl text-center">
+              <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">Session completed</p>
+              <h2 className="mt-4 text-3xl font-semibold text-white">This interview has already been completed.</h2>
+              <p className="mt-4 text-slate-300">
+                Your responses have been evaluated. Start another session to practice again, or return to your history to
+                review previous interview runs.
+              </p>
+              <div className="mt-8 flex flex-wrap justify-center gap-3">
+                <GlowButton href="/setup" className="px-5 py-3">
+                  Start another session
+                </GlowButton>
+                <GlowButton href="/history" variant="secondary" className="px-5 py-3">
+                  Back to history
+                </GlowButton>
+              </div>
+            </div>
+          </GlassCard>
         ) : (
           <>
             <div className="grid gap-6 lg:grid-cols-2">
@@ -290,32 +351,48 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   <div>
                     <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-100">
                       <Bot className="size-4" />
-                      AI Interviewer
+                      Interviewer
                     </div>
-                    <h2 className="mt-5 text-3xl font-semibold text-white">Browser-spoken question flow</h2>
+                    <h2 className="mt-5 text-3xl font-semibold text-white">Live interview prompt</h2>
                     <p className="mt-3 max-w-lg text-sm leading-7 text-slate-300">
-                      Questions come from the backend as text, then your browser speaks them immediately. This keeps the
-                      interview moving even when the backend does not provide audio files.
+                      Each question is generated for your session, spoken aloud in the browser, and followed by your recorded response.
                     </p>
                   </div>
 
                   <div className="flex flex-1 items-center justify-center">
-                    <div className="relative flex size-64 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-violet-500/20 via-slate-900 to-blue-500/20 shadow-[0_0_80px_rgba(99,102,241,0.25)]">
-                      <div className="absolute inset-6 rounded-full border border-white/10 bg-slate-950/70" />
-                      <div className="relative z-10 flex flex-col items-center gap-3">
-                        <div className="rounded-full border border-violet-400/20 bg-violet-500/10 p-5 text-violet-200">
-                          <Bot className={`size-16 ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
-                        </div>
-                        <div className="text-center">
-                          <div className="text-lg font-semibold text-white">
-                            {isSpeakingQuestion ? "Speaking..." : canRecordAnswer ? "Your turn" : "Preparing..."}
+                    {currentTurn ? (
+                      <div className="relative flex size-64 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-violet-500/20 via-slate-900 to-blue-500/20 shadow-[0_0_80px_rgba(99,102,241,0.25)]">
+                        <div className="absolute inset-6 rounded-full border border-white/10 bg-slate-950/70" />
+                        <div className="relative z-10 flex flex-col items-center gap-3">
+                          <div className="rounded-full border border-violet-400/20 bg-violet-500/10 p-5 text-violet-200">
+                            <Bot className={`size-16 ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
                           </div>
-                          <div className="mt-1 text-sm text-slate-400">
-                            {currentTurn?.voiceMode ? "Voice mode enabled" : "Voice mode pending"}
+                          <div className="text-center">
+                            <div className="text-lg font-semibold text-white">
+                              {isSpeakingQuestion ? "Speaking..." : canRecordAnswer ? "Your turn" : "Preparing..."}
+                            </div>
+                            <div className="mt-1 text-sm text-slate-400">
+                              {currentTurn?.voiceMode ? "Voice mode enabled" : "Voice mode pending"}
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
+                    ) : (
+                      <StatePanel
+                        icon={Volume2}
+                        eyebrow="Waiting for the next prompt"
+                        title="The next question is being prepared"
+                        description="If the session has just started or resumed, give the backend a moment and then retry. Once the next turn is available, the question will be spoken automatically."
+                        tone="warning"
+                        className="w-full max-w-xl"
+                        actions={
+                          <GlowButton type="button" variant="secondary" onClick={() => void refetch()}>
+                            <RefreshCw className="size-4" />
+                            Refresh turn
+                          </GlowButton>
+                        }
+                      />
+                    )}
                   </div>
 
                   <div className="space-y-3 rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
@@ -329,6 +406,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       <button
                         className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/10"
                         onClick={() => setShowQuestionText((value) => !value)}
+                        disabled={!currentTurn}
                       >
                         {showQuestionText ? "Hide text" : "Reveal text"}
                       </button>
@@ -337,10 +415,11 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       <div className="text-sm leading-7 text-slate-200">{questionText || "No text question available."}</div>
                     ) : (
                       <div className="text-sm text-slate-400">
-                        Question text is hidden by default. Use Replay if you want the browser to speak it again.
+                        Keep the focus on listening first. Reveal the text only if you need to review the wording.
                       </div>
                     )}
                     {speechError ? <div className="text-xs text-amber-300">{speechError}</div> : null}
+                    {isError && !currentTurn ? <div className="text-xs text-amber-300">We also hit a sync issue while loading this turn.</div> : null}
                   </div>
                 </div>
               </GlassCard>
@@ -365,15 +444,45 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                     {isCameraReady ? (
                       <video ref={videoRef} autoPlay muted playsInline className="h-full w-full object-cover" />
                     ) : (
-                      <div className="flex h-full items-center justify-center">
-                        <div className="text-center text-slate-400">
-                          <VideoOff className="mx-auto size-12" />
-                          <p className="mt-4 text-sm">Camera preview unavailable</p>
-                        </div>
+                      <div className="flex h-full items-center justify-center p-6">
+                        <StatePanel
+                          icon={VideoOff}
+                          eyebrow="Camera unavailable"
+                          title="Preview is not ready yet"
+                          description="Allow camera access to see your live preview during the interview. You can still retry device setup if the browser blocked access."
+                          tone={mediaError ? "warning" : "default"}
+                          className="w-full"
+                          contentClassName="p-6 text-center"
+                          actions={
+                            <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
+                              <RefreshCw className="size-4" />
+                              Enable camera
+                            </GlowButton>
+                          }
+                        />
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
                       Camera {isCameraReady ? "connected" : "waiting"}
+                    </div>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 md:grid-cols-2">
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Microphone</div>
+                      <div className="mt-2 text-white">{isMicrophoneReady ? "Connected and ready to record" : "Waiting for permission"}</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
+                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Interview flow</div>
+                      <div className="mt-2 text-white">
+                        {isSpeakingQuestion
+                          ? "Listening to question"
+                          : submitVoiceAnswer.isPending
+                            ? "Uploading answer"
+                            : canRecordAnswer
+                              ? "Ready for your answer"
+                              : "Waiting for AI prompt"}
+                      </div>
                     </div>
                   </div>
 
@@ -382,7 +491,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       type="button"
                       className="h-14 justify-center"
                       onClick={() => void startRecording()}
-                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !canRecordAnswer}
+                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !canRecordAnswer || !isMediaReady}
                     >
                       <Mic className="size-4" />
                       {isRequestingMedia
@@ -406,11 +515,14 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   </div>
 
                   <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                    The browser speaks the backend-generated question, then recording unlocks after speech ends. No
-                    transcript is shown in the UI, and completion is based on `questionCount`.
+                    Once the question finishes, recording unlocks automatically so you can respond naturally and move straight into the next turn.
                   </div>
-                  {mediaError ? <div className="mt-3 text-sm text-rose-300">{mediaError}</div> : null}
-                  {finalReport ? <div className="mt-3 text-xs text-emerald-300">Final report received from backend.</div> : null}
+                  {mediaError ? (
+                    <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
+                      {mediaError}
+                    </div>
+                  ) : null}
+                  {finalReport ? <div className="mt-3 text-xs text-emerald-300">Your report is ready.</div> : null}
                 </div>
               </GlassCard>
             </div>
@@ -429,6 +541,24 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                 <div className="mt-2 text-3xl font-semibold text-white">{currentQuestionNumber ?? "--"}</div>
               </GlassCard>
             </div>
+
+            {isError ? (
+              <div className="mt-6">
+                <StatePanel
+                  icon={AlertTriangle}
+                  eyebrow="Connection issue"
+                  title="The interview session needs a refresh"
+                  description="The backend may have timed out or cold-started. Retry to resync the current turn without losing the session."
+                  tone="warning"
+                  actions={
+                    <GlowButton type="button" variant="secondary" onClick={() => void refetch()}>
+                      <RefreshCw className="size-4" />
+                      Retry session sync
+                    </GlowButton>
+                  }
+                />
+              </div>
+            ) : null}
           </>
         )}
       </div>

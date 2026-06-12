@@ -41,8 +41,8 @@ export function HeroSection() {
             transition={{ delay: 0.25, duration: 0.7, ease: "easeOut" }}
             className="mt-6 max-w-2xl text-lg leading-8 text-slate-300 sm:text-xl"
           >
-            Experience premium AI-guided mock interviews with adaptive scenarios, clear feedback, and
-            confidence-building analytics designed for ambitious candidates.
+            Practice realistic interviews with AI-led questions, voice-based responses, and structured feedback that
+            helps you improve with every session.
           </motion.p>
 
           <motion.div
@@ -78,8 +78,8 @@ export function HeroSection() {
               ))}
             </div>
             <div>
-              <div className="text-sm font-semibold text-white">Trusted by early-stage builders and job seekers</div>
-              <div className="text-sm text-slate-400">10,000+ practice sessions envisioned in the product roadmap</div>
+              <div className="text-sm font-semibold text-white">Built for serious interview preparation</div>
+              <div className="text-sm text-slate-400">Role-specific practice, voice rounds, and clear post-interview review.</div>
             </div>
           </motion.div>
         </div>

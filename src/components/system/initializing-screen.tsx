@@ -2,7 +2,7 @@
 
 import { LoaderCircle } from "lucide-react";
 
-import { GlassCard } from "@/components/ui/glass-card";
+import { StatePanel } from "@/components/system/state-panel";
 
 type InitializingScreenProps = {
   title?: string;
@@ -15,13 +15,15 @@ export function InitializingScreen({
 }: InitializingScreenProps) {
   return (
     <div className="container-shell flex min-h-[60vh] items-center justify-center py-16">
-      <GlassCard className="max-w-lg rounded-[32px] p-8 text-center">
-        <div className="mx-auto flex size-16 items-center justify-center rounded-full border border-violet-400/20 bg-violet-500/10 text-violet-200">
-          <LoaderCircle className="size-8 animate-spin" />
-        </div>
-        <h2 className="mt-6 text-2xl font-semibold text-white">{title}</h2>
-        <p className="mt-3 text-sm leading-7 text-slate-300">{description}</p>
-      </GlassCard>
+      <StatePanel
+        icon={LoaderCircle}
+        eyebrow="Please wait"
+        title={title}
+        description={description}
+        className="max-w-lg"
+        contentClassName="text-center"
+        iconClassName="animate-spin"
+      />
     </div>
   );
 }

@@ -94,4 +94,19 @@ body::before {
       linear-gradient(180deg, rgba(255, 255, 255, 0.09), rgba(255, 255, 255, 0.03)),
       rgba(255, 255, 255, 0.04);
   }
+
+  .skeleton-shimmer {
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.18), transparent);
+    animation: skeleton-shimmer 1.6s linear infinite;
+  }
+}
+
+@keyframes skeleton-shimmer {
+  0% {
+    transform: translateX(-120%);
+  }
+
+  100% {
+    transform: translateX(320%);
+  }
 }

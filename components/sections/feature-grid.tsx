@@ -19,11 +19,11 @@ export function FeatureGrid() {
         >
           <p className="text-sm font-semibold uppercase tracking-[0.25em] text-violet-200/80">Why choose AI Interview</p>
           <h2 className="mt-4 font-[var(--font-heading)] text-3xl font-bold sm:text-4xl">
-            Premium interview preparation, built to feel like a real product.
+            A focused workflow for better interview practice.
           </h2>
           <p className="mt-4 text-base leading-7 text-slate-300">
-            This frontend foundation sets the tone for a futuristic AI interview experience with polished motion,
-            reusable building blocks, and product-grade visual consistency.
+            Move from setup to live practice to performance review in one consistent experience designed to feel clear,
+            modern, and dependable.
           </p>
         </motion.div>
 

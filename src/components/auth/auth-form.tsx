@@ -82,8 +82,8 @@ export function AuthForm({ mode }: AuthFormProps) {
         </h1>
         <p className="text-sm leading-7 text-slate-300 sm:text-base">
           {isRegister
-            ? "Register to connect the premium frontend with your live mock interview backend."
-            : "Sign in to continue into your personalized interview setup flow."}
+            ? "Create your account to start practicing voice-based mock interviews and track your progress."
+            : "Sign in to continue your interview practice, review past sessions, and pick up where you left off."}
         </p>
       </div>
 
@@ -160,7 +160,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       <div className="mt-6 text-center text-sm text-slate-400">
         {isRegister ? "Already have an account?" : "Need an account?"}{" "}
         <Link href={isRegister ? "/login" : "/register"} className="font-medium text-violet-200 transition hover:text-white">
-          {isRegister ? "Sign in" : "Create one"}
+          {isRegister ? "Sign in" : "Create an account"}
         </Link>
       </div>
     </GlassCard>

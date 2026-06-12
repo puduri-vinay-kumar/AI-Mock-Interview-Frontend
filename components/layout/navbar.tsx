@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { motion } from "framer-motion";
+import { usePathname } from "next/navigation";
 import { Bot, LogOut, Menu, MoonStar, UserCircle2, X } from "lucide-react";
 import { useState } from "react";
 
@@ -18,10 +19,19 @@ type NavbarProps = {
 
 export function Navbar({ showProfile = false }: NavbarProps) {
   const [open, setOpen] = useState(false);
+  const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const logout = useLogout();
   const shouldShowProfile = showProfile && isHydrated && Boolean(user);
+  const links = shouldShowProfile
+    ? [
+        { label: "Home", href: "/" },
+        { label: "Setup", href: "/setup" },
+        { label: "History", href: "/history" },
+        { label: "Profile", href: "/profile" }
+      ]
+    : navLinks;
 
   return (
     <div className="container-shell pt-4 sm:pt-6">
@@ -39,23 +49,25 @@ export function Navbar({ showProfile = false }: NavbarProps) {
           </Link>
 
           <div className="hidden items-center gap-8 lg:flex">
-            {(shouldShowProfile
-              ? [
-                  { label: "Home", href: "/" },
-                  { label: "Setup", href: "/setup" },
-                  { label: "History", href: "/history" },
-                  { label: "Profile", href: "/profile" }
-                ]
-              : navLinks
-            ).map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="text-sm text-slate-300 transition-colors duration-200 hover:text-white"
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const isHashLink = link.href.startsWith("#");
+              const isActive = isHashLink ? false : pathname === link.href;
+
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={cn(
+                    "rounded-full px-3 py-2 text-sm transition-colors duration-200",
+                    isActive
+                      ? "bg-white/8 text-white shadow-[inset_0_0_0_1px_rgba(255,255,255,0.08)]"
+                      : "text-slate-300 hover:text-white"
+                  )}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
           </div>
 
           <div className="hidden items-center gap-3 lg:flex">
@@ -87,7 +99,7 @@ export function Navbar({ showProfile = false }: NavbarProps) {
                   <MoonStar className="size-5" />
                 </button>
                 <GlowButton href="/login" className="px-5 py-3">
-                  Login
+                  Sign in
                 </GlowButton>
               </>
             )}
@@ -112,24 +124,26 @@ export function Navbar({ showProfile = false }: NavbarProps) {
           className={cn("overflow-hidden lg:hidden")}
         >
           <div className="space-y-3 border-t border-white/10 pt-4">
-            {(shouldShowProfile
-              ? [
-                  { label: "Home", href: "/" },
-                  { label: "Setup", href: "/setup" },
-                  { label: "History", href: "/history" },
-                  { label: "Profile", href: "/profile" }
-                ]
-              : navLinks
-            ).map((link) => (
-              <Link
-                key={link.label}
-                href={link.href}
-                className="block rounded-2xl px-3 py-2 text-sm text-slate-300 transition hover:bg-white/5 hover:text-white"
-                onClick={() => setOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
+            {links.map((link) => {
+              const isHashLink = link.href.startsWith("#");
+              const isActive = isHashLink ? false : pathname === link.href;
+
+              return (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  className={cn(
+                    "block rounded-2xl px-3 py-2 text-sm transition",
+                    isActive
+                      ? "bg-white/8 text-white"
+                      : "text-slate-300 hover:bg-white/5 hover:text-white"
+                  )}
+                  onClick={() => setOpen(false)}
+                >
+                  {link.label}
+                </Link>
+              );
+            })}
             {shouldShowProfile ? (
               <button
                 className="flex w-full items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-3 py-3 text-left"
@@ -143,7 +157,7 @@ export function Navbar({ showProfile = false }: NavbarProps) {
               </button>
             ) : (
               <GlowButton href="/login" className="w-full justify-center">
-                Login
+                Sign in
               </GlowButton>
             )}
           </div>

@@ -49,28 +49,28 @@ export const features: Feature[] = [
   {
     title: "AI Generated Questions",
     description:
-      "Role-aware mock questions structured to feel realistic, challenging, and interview-ready.",
+      "Generate role-specific questions that feel realistic, relevant, and challenging enough to prepare you properly.",
     icon: BrainCircuit,
     accent: "from-violet-500/25 to-fuchsia-500/20"
   },
   {
     title: "Real-time Feedback",
     description:
-      "Surface clarity, delivery, and answer quality with premium coaching-style insights.",
+      "Understand how clearly you communicate, how well you structure answers, and where your delivery can improve.",
     icon: MessageSquareText,
     accent: "from-cyan-500/25 to-blue-500/20"
   },
   {
     title: "Performance Analytics",
     description:
-      "Transform each session into measurable growth with focused skill trend indicators.",
+      "Turn every interview into a measurable review with scores, themes, and visible areas for improvement.",
     icon: BarChart3,
     accent: "from-amber-500/25 to-orange-500/20"
   },
   {
     title: "Adaptive Difficulty",
     description:
-      "Progress from warm-up rounds to tougher scenarios as your confidence and accuracy improve.",
+      "Progress from foundational questions to deeper follow-ups as your answers become stronger and more confident.",
     icon: Target,
     accent: "from-indigo-500/25 to-sky-500/20"
   }
@@ -93,16 +93,16 @@ export const setupHighlights = [
   {
     icon: Sparkles,
     title: "Resume-driven personalization",
-    description: "We tailor mock prompts to the tools, projects, and experience you want to showcase."
+    description: "Tailor the interview around your background so the questions feel closer to the roles you are targeting."
   },
   {
     icon: Clock3,
     title: "Focused practice flow",
-    description: "Pick the role, round style, and question count that matches your next real interview."
+    description: "Choose the role, interview style, and question count that best matches the conversation you want to rehearse."
   },
   {
     icon: Layers3,
     title: "Premium structure",
-    description: "Reusable UI foundations now make it easy to grow into dashboards, reports, and coding rounds."
+    description: "Move cleanly from setup to interview to report without losing context or momentum."
   }
 ];

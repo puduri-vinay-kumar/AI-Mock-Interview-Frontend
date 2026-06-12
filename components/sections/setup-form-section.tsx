@@ -15,6 +15,7 @@ import { setupHighlights } from "@/data/mock";
 import { useCreateInterview, useResumeUpload } from "@/hooks/useInterview";
 import { DEFAULT_QUESTION_COUNT } from "@/lib/constants";
 import { useInterviewStore } from "@/store/interview.store";
+import { PageHeader } from "@/components/system/page-header";
 
 const setupSchema = z.object({
   role: z.string().min(2, "Select your target role."),
@@ -107,19 +108,19 @@ export function SetupFormSection() {
 
   return (
     <section className="container-shell pb-24 pt-10">
-      <motion.div
-        initial={{ opacity: 0, y: 26 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.65 }}
-        className="mx-auto max-w-4xl text-center"
-      >
-        <p className="text-sm font-semibold uppercase tracking-[0.32em] text-violet-200/80">Personalized setup</p>
-        <h1 className="mt-5 font-[var(--font-heading)] text-4xl font-bold text-white sm:text-5xl">
-          Setup Your Interview
-        </h1>
-        <p className="mx-auto mt-4 max-w-2xl text-base leading-7 text-slate-300 sm:text-lg">
-          Choose your role, interview style, and number of questions to begin a voice-first mock interview experience.
-        </p>
+      <motion.div initial={{ opacity: 0, y: 26 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.65 }}>
+        <PageHeader
+          eyebrow="Interview setup"
+          title="Setup Your Interview"
+          description="Choose the role, interview style, and question count you want to practice so your session feels focused and relevant."
+          meta={
+            <>
+              <span>Voice-based session</span>
+              <span>Resume personalization available</span>
+              <span>Question-count driven</span>
+            </>
+          }
+        />
       </motion.div>
 
       <GlassCard className="mx-auto mt-12 max-w-6xl rounded-[36px] p-5 sm:p-8 lg:p-10">
@@ -179,7 +180,7 @@ export function SetupFormSection() {
               <div>
                 <h2 className="text-2xl font-semibold text-white">Upload Resume</h2>
                 <p className="mt-3 text-base leading-7 text-slate-300">
-                  Your resume is uploaded to the live backend and can still be used to personalize the voice interview flow.
+                  Add your resume to help tailor questions around your experience, skills, and target role.
                 </p>
               </div>
 
@@ -206,34 +207,47 @@ export function SetupFormSection() {
               isUploading={resumeUpload.isPending}
               uploadProgress={uploadProgress}
               parsedSkills={parsedSkills}
-              helperText="PDF or DOCX up to 5 MB. The backend expects multipart upload with the resume field."
+              helperText="Upload a PDF or DOCX up to 5 MB."
             />
           </div>
 
           <div className="mt-8 grid gap-6 lg:grid-cols-[1fr_auto] lg:items-center">
             <div className="rounded-[28px] border border-white/10 bg-gradient-to-r from-white/[0.06] to-white/[0.03] p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-                <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-violet-200">
-                  <Sparkles className="size-6" />
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+                  <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-violet-200">
+                    <Sparkles className="size-6" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold text-white">Why uploading a resume helps</h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
+                      Resume signals help the platform ask more relevant questions, choose stronger follow-ups, and make
+                      the interview feel closer to a real hiring conversation.
+                    </p>
+                    {resumeId ? <p className="mt-2 text-xs text-emerald-300">Resume connected successfully.</p> : null}
+                  </div>
                 </div>
-                <div>
-                  <h3 className="text-xl font-semibold text-white">Why uploading a resume helps</h3>
-                  <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                    Parsed skills from the backend help shape role-specific prompts, sharper follow-up questions, and a
-                    more realistic voice interview session.
-                  </p>
-                  {resumeId ? <p className="mt-2 text-xs text-emerald-300">Resume connected successfully.</p> : null}
+                <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-violet-200">
+                  <div className="text-xs uppercase tracking-[0.22em] text-violet-200/80">Session summary</div>
+                  <div className="mt-2 text-sm text-white">
+                    {form.watch("interviewType")} • {form.watch("experienceLevel")} • {form.watch("questionCount")} questions
+                  </div>
                 </div>
               </div>
             </div>
 
-            <GlowButton
-              type="submit"
-              className="h-14 px-8 text-base"
-              disabled={createInterview.isPending || resumeUpload.isPending}
-            >
-              {createInterview.isPending ? "Creating..." : "Start Interview"}
-            </GlowButton>
+            <div className="space-y-3">
+              <GlowButton
+                type="submit"
+                className="h-14 px-8 text-base"
+                disabled={createInterview.isPending || resumeUpload.isPending}
+              >
+                {createInterview.isPending ? "Creating..." : "Start Interview"}
+              </GlowButton>
+              <p className="text-center text-xs leading-6 text-slate-400">
+                You can start without a resume. Adding one simply sharpens the interview context.
+              </p>
+            </div>
           </div>
         </form>
       </GlassCard>
