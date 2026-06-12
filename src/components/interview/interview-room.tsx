@@ -50,6 +50,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const [isScreenReady, setIsScreenReady] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const combinedMediaStreamRef = useRef<MediaStream | null>(null);
   const cameraStreamRef = useRef<MediaStream | null>(null);
   const microphoneStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
@@ -57,12 +58,14 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lastSpokenQuestionIdRef = useRef<string | null>(null);
+  const previewFallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const speechUnlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const questionText = currentTurn?.question ?? "";
   const textToSpeak = currentTurn?.speechText || currentTurn?.question || "";
   const interviewStatus = String(currentInterview?.status ?? data?.interview?.status ?? "scheduled");
   const isCompletedSession = interviewStatus === "completed" && !currentTurn;
-  const isMediaReady = isVideoPreviewLive && isMicrophoneReady;
+  const isMediaReady = isMicrophoneReady;
   const currentQuestionNumber = Array.isArray(currentInterview?.questions) && currentTurn?.questionId
     ? Math.max(
         1,
@@ -78,6 +81,9 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
 
     try {
       await videoElement.play();
+      if (videoElement.readyState >= 2) {
+        setIsVideoPreviewLive(true);
+      }
     } catch {
       setIsVideoPreviewLive(false);
     }
@@ -96,11 +102,20 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       videoElement.srcObject = stream;
       setIsVideoPreviewLive(false);
 
+      if (previewFallbackTimerRef.current) {
+        clearTimeout(previewFallbackTimerRef.current);
+      }
+
       if (stream) {
         stream.getVideoTracks().forEach((track) => {
           track.enabled = true;
         });
         void playCameraPreview();
+        previewFallbackTimerRef.current = setTimeout(() => {
+          if (videoElement.readyState >= 2 || videoElement.videoWidth > 0) {
+            setIsVideoPreviewLive(true);
+          }
+        }, 1200);
       }
     },
     [playCameraPreview]
@@ -111,27 +126,33 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       setIsRequestingMedia(true);
       setMediaError(null);
 
-      if (!cameraStreamRef.current) {
-        cameraStreamRef.current = await navigator.mediaDevices.getUserMedia({
+      if (!combinedMediaStreamRef.current) {
+        const combinedStream = await navigator.mediaDevices.getUserMedia({
           video: {
             facingMode: "user",
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          audio: false
-        });
-        setIsCameraReady(true);
-        attachCameraStream(cameraStreamRef.current);
-      }
-
-      if (!microphoneStreamRef.current) {
-        microphoneStreamRef.current = await navigator.mediaDevices.getUserMedia({
           audio: {
             echoCancellation: true,
             noiseSuppression: true
           },
-          video: false
         });
+
+        combinedMediaStreamRef.current = combinedStream;
+        const videoTracks = combinedStream.getVideoTracks();
+        const audioTracks = combinedStream.getAudioTracks();
+
+        cameraStreamRef.current = videoTracks.length ? new MediaStream(videoTracks) : null;
+        microphoneStreamRef.current = audioTracks.length ? new MediaStream(audioTracks) : null;
+      }
+
+      if (cameraStreamRef.current) {
+        setIsCameraReady(true);
+        attachCameraStream(cameraStreamRef.current);
+      }
+
+      if (microphoneStreamRef.current) {
         setIsMicrophoneReady(true);
       }
     } catch (error) {
@@ -151,16 +172,24 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
+      if (previewFallbackTimerRef.current) {
+        clearTimeout(previewFallbackTimerRef.current);
+      }
+      if (speechUnlockTimerRef.current) {
+        clearTimeout(speechUnlockTimerRef.current);
+      }
 
       mediaRecorderRef.current?.stream.getTracks().forEach((track) => track.stop());
-      cameraStreamRef.current?.getTracks().forEach((track) => track.stop());
-      microphoneStreamRef.current?.getTracks().forEach((track) => track.stop());
+      combinedMediaStreamRef.current?.getTracks().forEach((track) => track.stop());
       if (typeof window !== "undefined") {
         window.speechSynthesis.cancel();
       }
       if (videoRef.current) {
         videoRef.current.srcObject = null;
       }
+      combinedMediaStreamRef.current = null;
+      cameraStreamRef.current = null;
+      microphoneStreamRef.current = null;
       setIsCameraReady(false);
       setIsVideoPreviewLive(false);
       setIsMicrophoneReady(false);
@@ -187,6 +216,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, [isLoading]);
 
   const speakCurrentTurn = useCallback(() => {
+    if (speechUnlockTimerRef.current) {
+      clearTimeout(speechUnlockTimerRef.current);
+    }
+
     if (typeof window === "undefined" || typeof window.speechSynthesis === "undefined") {
       setSpeechError("Browser speech synthesis is not available in this environment.");
       setIsSpeakingQuestion(false);
@@ -206,16 +239,27 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
     utterance.lang = "en-US";
     utterance.rate = 1;
     utterance.pitch = 1;
+    const fallbackUnlockMs = Math.min(Math.max(textToSpeak.split(/\s+/).length * 480, 4000), 18000);
     utterance.onstart = () => {
       setSpeechError(null);
       setIsSpeakingQuestion(true);
       setCanRecordAnswer(false);
+      speechUnlockTimerRef.current = setTimeout(() => {
+        setIsSpeakingQuestion(false);
+        setCanRecordAnswer(true);
+      }, fallbackUnlockMs);
     };
     utterance.onend = () => {
+      if (speechUnlockTimerRef.current) {
+        clearTimeout(speechUnlockTimerRef.current);
+      }
       setIsSpeakingQuestion(false);
       setCanRecordAnswer(true);
     };
     utterance.onerror = () => {
+      if (speechUnlockTimerRef.current) {
+        clearTimeout(speechUnlockTimerRef.current);
+      }
       setSpeechError("Browser text-to-speech could not play this question.");
       setIsSpeakingQuestion(false);
       setCanRecordAnswer(true);
@@ -495,14 +539,6 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                             setIsVideoPreviewLive(true);
                           }}
                         />
-                        {!isVideoPreviewLive ? (
-                          <div className="absolute inset-0 flex items-center justify-center bg-slate-950/55 backdrop-blur-sm">
-                            <div className="text-center text-slate-300">
-                              <RefreshCw className="mx-auto size-10 animate-spin text-cyan-200" />
-                              <p className="mt-4 text-sm">Starting camera preview...</p>
-                            </div>
-                          </div>
-                        ) : null}
                       </>
                     ) : (
                       <div className="flex h-full items-center justify-center p-6">
@@ -526,6 +562,14 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
                       Camera {isVideoPreviewLive ? "live" : isCameraReady ? "starting" : "waiting"}
                     </div>
+                    {isCameraReady && !isVideoPreviewLive ? (
+                      <div className="absolute right-4 top-4 rounded-full border border-cyan-400/20 bg-slate-950/70 px-3 py-2 text-xs text-cyan-100 backdrop-blur">
+                        <span className="inline-flex items-center gap-2">
+                          <RefreshCw className="size-3.5 animate-spin" />
+                          Starting preview
+                        </span>
+                      </div>
+                    ) : null}
                   </div>
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
@@ -552,7 +596,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       type="button"
                       className="h-14 justify-center"
                       onClick={() => void startRecording()}
-                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !canRecordAnswer || !isMediaReady}
+                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !currentTurn || !canRecordAnswer || !isMicrophoneReady}
                     >
                       <Mic className="size-4" />
                       {isRequestingMedia
