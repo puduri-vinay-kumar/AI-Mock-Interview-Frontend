@@ -48,6 +48,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const [speechError, setSpeechError] = useState<string | null>(null);
   const [canRecordAnswer, setCanRecordAnswer] = useState(false);
   const [isScreenReady, setIsScreenReady] = useState(false);
+  const [hasRequestedMedia, setHasRequestedMedia] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const combinedMediaStreamRef = useRef<MediaStream | null>(null);
@@ -130,6 +131,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
     try {
       setIsRequestingMedia(true);
       setMediaError(null);
+      setHasRequestedMedia(true);
 
       if (!combinedMediaStreamRef.current) {
         const combinedStream = await navigator.mediaDevices.getUserMedia({
@@ -171,8 +173,6 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, [attachCameraStream]);
 
   useEffect(() => {
-    void requestMediaAccess();
-
     return () => {
       if (timerRef.current) {
         clearInterval(timerRef.current);
@@ -199,7 +199,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       setIsVideoPreviewLive(false);
       setIsMicrophoneReady(false);
     };
-  }, [requestMediaAccess]);
+  }, []);
 
   useEffect(() => {
     attachCameraStream(cameraStreamRef.current);
@@ -419,7 +419,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
               </GlowButton>
               <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
                 <RefreshCw className="size-4" />
-                Check devices
+                Enable devices
               </GlowButton>
             </>
           }
@@ -548,7 +548,24 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   </div>
 
                   <div className="relative flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60">
-                    {isCameraReady ? (
+                    {!hasRequestedMedia ? (
+                      <div className="flex h-full items-center justify-center p-6">
+                        <StatePanel
+                          icon={Camera}
+                          eyebrow="Device setup"
+                          title="Enable camera and microphone"
+                          description="Grant device access when you are ready to begin. This keeps the interview screen responsive and avoids unnecessary browser prompts before you start."
+                          className="w-full"
+                          contentClassName="p-6 text-center"
+                          actions={
+                            <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
+                              <Camera className="size-4" />
+                              Enable devices
+                            </GlowButton>
+                          }
+                        />
+                      </div>
+                    ) : isCameraReady ? (
                       <>
                         <video
                           ref={videoRef}
@@ -591,9 +608,9 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
-                      Camera {isCameraReady ? "connected" : "waiting"}
+                      Camera {isCameraReady ? "connected" : hasRequestedMedia ? "waiting" : "not enabled"}
                     </div>
-                    {isCameraReady && !isVideoPreviewLive ? (
+                    {hasRequestedMedia && isCameraReady && !isVideoPreviewLive ? (
                       <div className="absolute right-4 top-4 rounded-full border border-cyan-400/20 bg-slate-950/70 px-3 py-2 text-xs text-cyan-100 backdrop-blur">
                         <span className="inline-flex items-center gap-2">
                           <RefreshCw className="size-3.5 animate-spin" />
@@ -606,7 +623,9 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                   <div className="mt-4 grid gap-3 md:grid-cols-2">
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
                       <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Microphone</div>
-                      <div className="mt-2 text-white">{isMicrophoneReady ? "Connected and ready to record" : "Waiting for permission"}</div>
+                      <div className="mt-2 text-white">
+                        {isMicrophoneReady ? "Connected and ready to record" : hasRequestedMedia ? "Waiting for permission" : "Not enabled yet"}
+                      </div>
                     </div>
                     <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
                       <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Interview flow</div>

@@ -3,7 +3,6 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 
-import { InitializingScreen } from "@/components/system/initializing-screen";
 import { useAuthStore } from "@/store/auth.store";
 
 type GuestRouteProps = {
@@ -22,8 +21,8 @@ export function GuestRoute({ children }: GuestRouteProps) {
     }
   }, [isHydrated, router, status]);
 
-  if (!isHydrated || isBootstrapping) {
-    return <InitializingScreen />;
+  if (!isHydrated) {
+    return null;
   }
 
   if (status === "authenticated") {

@@ -23,13 +23,17 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     }
   }, [isHydrated, router, status]);
 
-  if (!isHydrated || isBootstrapping) {
+  if (!isHydrated) {
     return <InitializingScreen description={bootstrapMessage} />;
   }
 
-  if (status !== "authenticated") {
-    return null;
+  if (status === "authenticated") {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  if (isBootstrapping) {
+    return <InitializingScreen description={bootstrapMessage} />;
+  }
+
+  return null;
 }
