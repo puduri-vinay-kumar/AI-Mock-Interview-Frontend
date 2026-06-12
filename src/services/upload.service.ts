@@ -9,9 +9,6 @@ export const uploadService = {
     formData.append("resume", file);
 
     const response = await apiClient.post<ApiResponse<ResumeUploadResponse>>("/api/upload/resume", formData, {
-      headers: {
-        "Content-Type": "multipart/form-data"
-      },
       onUploadProgress: (event) => {
         if (!event.total || !onProgress) {
           return;

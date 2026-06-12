@@ -51,9 +51,6 @@ export const interviewService = {
       `/api/interviews/${id}/answer-voice`,
       formData,
       {
-        headers: {
-          "Content-Type": "multipart/form-data"
-        },
         onUploadProgress: (event) => {
           if (!event.total || !onProgress) {
             return;

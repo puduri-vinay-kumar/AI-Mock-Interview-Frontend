@@ -55,6 +55,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const microphoneStreamRef = useRef<MediaStream | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<BlobPart[]>([]);
+  const recordingStartedAtRef = useRef<number | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const speechUtteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const lastSpokenQuestionIdRef = useRef<string | null>(null);
@@ -112,7 +113,11 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
         });
         void playCameraPreview();
         previewFallbackTimerRef.current = setTimeout(() => {
-          if (videoElement.readyState >= 2 || videoElement.videoWidth > 0) {
+          if (
+            videoElement.readyState >= 2 ||
+            videoElement.videoWidth > 0 ||
+            stream.getVideoTracks().some((track) => track.readyState === "live" && track.enabled)
+          ) {
             setIsVideoPreviewLive(true);
           }
         }, 1200);
@@ -143,7 +148,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
         const videoTracks = combinedStream.getVideoTracks();
         const audioTracks = combinedStream.getAudioTracks();
 
-        cameraStreamRef.current = videoTracks.length ? new MediaStream(videoTracks) : null;
+        cameraStreamRef.current = videoTracks.length ? combinedStream : null;
         microphoneStreamRef.current = audioTracks.length ? new MediaStream(audioTracks) : null;
       }
 
@@ -294,6 +299,12 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       timerRef.current = null;
     }
 
+    try {
+      mediaRecorderRef.current?.requestData();
+    } catch {
+      // Some browsers do not support requesting a final flush explicitly.
+    }
+
     mediaRecorderRef.current?.stop();
     setIsRecording(false);
   }, []);
@@ -321,6 +332,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       recordedChunksRef.current = [];
       setUploadProgress(0);
       setRecordingSeconds(0);
+      recordingStartedAtRef.current = Date.now();
 
       const recorder = mimeType
         ? new MediaRecorder(microphoneStreamRef.current, { mimeType })
@@ -339,24 +351,39 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
           const audioBlob = new Blob(recordedChunksRef.current, {
             type: recorder.mimeType || "audio/webm"
           });
+
+          if (!audioBlob.size) {
+            addToast({
+              title: "No audio captured",
+              description: "We couldn’t detect a valid voice response. Please try recording again.",
+              variant: "error"
+            });
+            return;
+          }
+
           const extension = recorder.mimeType.includes("mp4") ? "m4a" : "webm";
           const file = new File([audioBlob], `voice-answer.${extension}`, {
             type: recorder.mimeType || "audio/webm"
           });
+          const durationSeconds = recordingStartedAtRef.current
+            ? Math.max(1, Math.round((Date.now() - recordingStartedAtRef.current) / 1000))
+            : Math.max(1, recordingSeconds);
 
           await submitVoiceAnswer.mutateAsync({
             payload: {
               audio: file,
-              durationSeconds: recordingSeconds
+              durationSeconds
             },
             onProgress: setUploadProgress
           });
         } catch {
           // handled by mutation onError
+        } finally {
+          recordingStartedAtRef.current = null;
         }
       };
 
-      recorder.start();
+      recorder.start(250);
       setIsRecording(true);
       timerRef.current = setInterval(() => {
         setRecordingSeconds((value) => value + 1);
@@ -532,7 +559,11 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                           onLoadedMetadata={() => {
                             void playCameraPreview();
                           }}
+                          onLoadedData={() => {
+                            setIsVideoPreviewLive(true);
+                          }}
                           onCanPlay={() => {
+                            setIsVideoPreviewLive(true);
                             void playCameraPreview();
                           }}
                           onPlaying={() => {
@@ -560,13 +591,13 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       </div>
                     )}
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
-                      Camera {isVideoPreviewLive ? "live" : isCameraReady ? "starting" : "waiting"}
+                      Camera {isCameraReady ? "connected" : "waiting"}
                     </div>
                     {isCameraReady && !isVideoPreviewLive ? (
                       <div className="absolute right-4 top-4 rounded-full border border-cyan-400/20 bg-slate-950/70 px-3 py-2 text-xs text-cyan-100 backdrop-blur">
                         <span className="inline-flex items-center gap-2">
                           <RefreshCw className="size-3.5 animate-spin" />
-                          Starting preview
+                          Preview syncing
                         </span>
                       </div>
                     ) : null}
