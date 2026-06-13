@@ -67,15 +67,15 @@ export async function bootstrapAuth() {
   }
 
   bootstrapPromise = (async () => {
-  const store = useAuthStore.getState();
-  const token = getStoredToken();
-  const cachedUser = getStoredUser();
+    const store = useAuthStore.getState();
+    const token = getStoredToken();
+    const cachedUser = getStoredUser();
 
-  if (!token || isTokenExpired(token)) {
-    store.clearSession();
-    store.setHydrated(true);
-    return;
-  }
+    if (!token || isTokenExpired(token)) {
+      store.clearSession();
+      store.setHydrated(true);
+      return;
+    }
 
     useAuthStore.setState({
       user: cachedUser,

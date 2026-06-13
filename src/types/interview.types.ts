@@ -59,6 +59,7 @@ export type InterviewSession = {
 
 export type InterviewCreateResponse = {
   interview: InterviewSession;
+  currentTurn?: InterviewTurn;
   session?: {
     currentTurn?: InterviewTurn;
     [key: string]: unknown;

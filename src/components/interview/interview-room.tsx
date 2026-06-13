@@ -67,6 +67,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   const textToSpeak = currentTurn?.speechText || currentTurn?.question || "";
   const interviewStatus = String(currentInterview?.status ?? data?.interview?.status ?? "scheduled");
   const isCompletedSession = interviewStatus === "completed" && !currentTurn;
+  const isInitialLoading = isLoading && !currentInterview && !currentTurn;
   const isMediaReady = isMicrophoneReady;
   const currentQuestionNumber = Array.isArray(currentInterview?.questions) && currentTurn?.questionId
     ? Math.max(
@@ -209,7 +210,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, [attachCameraStream, hasRequestedMedia, isCameraReady]);
 
   useEffect(() => {
-    if (isLoading) {
+    if (isInitialLoading) {
       setIsScreenReady(false);
       return;
     }
@@ -221,7 +222,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
     return () => {
       window.clearTimeout(timeoutId);
     };
-  }, [isLoading]);
+  }, [isInitialLoading]);
 
   const speakCurrentTurn = useCallback(() => {
     if (speechUnlockTimerRef.current) {
@@ -428,7 +429,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
           }
         />
 
-        {isLoading ? (
+        {isInitialLoading ? (
           <div className="grid gap-6 lg:grid-cols-2">
             <LoadingSkeleton className="h-[520px] w-full" />
             <LoadingSkeleton className="h-[520px] w-full" />

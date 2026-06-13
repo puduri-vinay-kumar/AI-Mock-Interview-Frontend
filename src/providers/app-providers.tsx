@@ -16,7 +16,7 @@ export function AppProviders({ children }: AppProvidersProps) {
       new QueryClient({
         defaultOptions: {
           queries: {
-            retry: 1,
+            retry: 0,
             refetchOnWindowFocus: false
           },
           mutations: {

@@ -47,15 +47,31 @@ export function useCreateInterview() {
   return useMutation({
     mutationFn: (payload: InterviewSetupInput) => interviewService.createInterview(payload),
     onSuccess: (data) => {
+      const interviewId = data.interview._id ?? data.interview.id;
+      const currentTurn = data.session?.currentTurn ?? data.currentTurn ?? null;
+
+      if (!interviewId) {
+        addToast({
+          title: "Interview created without an id",
+          description: "The backend response did not include a usable interview id.",
+          variant: "error"
+        });
+        return;
+      }
+
       setCurrentInterview(data.interview);
-      setCurrentTurn(data.session?.currentTurn ?? null);
+      setCurrentTurn(currentTurn);
+      queryClient.setQueryData(["interviews", interviewId], {
+        interview: data.interview,
+        currentTurn
+      });
       void queryClient.invalidateQueries({ queryKey: ["interviews", "history"] });
       addToast({
         title: "Interview created",
         description: "Your voice interview session is ready.",
         variant: "success"
       });
-      router.push(`/interview/${data.interview._id ?? data.interview.id}`);
+      router.push(`/interview/${interviewId}`);
     },
     onError: (error) => {
       addToast({

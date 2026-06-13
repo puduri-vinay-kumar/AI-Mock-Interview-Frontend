@@ -21,9 +21,13 @@ export function Navbar({ showProfile = false }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
   const user = useAuthStore((state) => state.user);
+  const token = useAuthStore((state) => state.token);
+  const status = useAuthStore((state) => state.status);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const logout = useLogout();
-  const shouldShowProfile = showProfile && isHydrated && Boolean(user);
+  const shouldShowProfile = showProfile && isHydrated && (status === "authenticated" || Boolean(token));
+  const displayName = user?.name ?? "Candidate";
+  const displayEmail = user?.email ?? "Signed in";
   const links = shouldShowProfile
     ? [
         { label: "Home", href: "/" },
@@ -77,8 +81,8 @@ export function Navbar({ showProfile = false }: NavbarProps) {
                   <MoonStar className="size-5" />
                 </button>
                 <div className="hidden text-right xl:block">
-                  <div className="text-sm font-medium text-white">{user?.name}</div>
-                  <div className="text-xs text-slate-400">{user?.email}</div>
+                  <div className="text-sm font-medium text-white">{displayName}</div>
+                  <div className="text-xs text-slate-400">{displayEmail}</div>
                 </div>
                 <div className="rounded-full bg-gradient-to-br from-violet-500 to-blue-500 p-[1px] shadow-[0_0_25px_rgba(99,102,241,0.35)]">
                   <div className="rounded-full bg-slate-950/90 p-1">
@@ -150,8 +154,8 @@ export function Navbar({ showProfile = false }: NavbarProps) {
                 onClick={logout}
               >
                 <div>
-                  <div className="text-sm text-slate-200">{user?.name}</div>
-                  <div className="text-xs text-slate-400">{user?.email}</div>
+                  <div className="text-sm text-slate-200">{displayName}</div>
+                  <div className="text-xs text-slate-400">{displayEmail}</div>
                 </div>
                 <LogOut className="size-5 text-violet-200" />
               </button>
