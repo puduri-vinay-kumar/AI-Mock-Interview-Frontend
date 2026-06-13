@@ -71,7 +71,14 @@ export function useCreateInterview() {
         description: "Your voice interview session is ready.",
         variant: "success"
       });
-      router.push(`/interview/${interviewId}`);
+      const interviewPath = `/interview/${interviewId}`;
+      router.push(interviewPath);
+
+      window.setTimeout(() => {
+        if (window.location.pathname !== interviewPath) {
+          window.location.assign(interviewPath);
+        }
+      }, 350);
     },
     onError: (error) => {
       addToast({

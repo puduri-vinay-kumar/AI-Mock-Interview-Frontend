@@ -37,11 +37,15 @@ export function GlowButton(props: GlowButtonProps) {
 
   if ("href" in props && typeof props.href === "string") {
     return (
-      <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-        <Link href={props.href} className={cn(sharedClassName, variants[variant], props.className)}>
+      <Link href={props.href} className={cn(sharedClassName, variants[variant], props.className)}>
+        <motion.span
+          className="inline-flex items-center justify-center gap-2"
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+        >
           {props.children}
-        </Link>
-      </motion.div>
+        </motion.span>
+      </Link>
     );
   }
 
