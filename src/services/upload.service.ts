@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/axios";
+import { API_UPLOAD_TIMEOUT_MS } from "@/lib/constants";
 import { unwrapResponse } from "@/services/api";
 import type { ApiResponse } from "@/types/api.types";
 import type { ResumeUploadResponse } from "@/types/upload.types";
@@ -9,6 +10,7 @@ export const uploadService = {
     formData.append("resume", file);
 
     const response = await apiClient.post<ApiResponse<ResumeUploadResponse>>("/api/upload/resume", formData, {
+      timeout: API_UPLOAD_TIMEOUT_MS,
       onUploadProgress: (event) => {
         if (!event.total || !onProgress) {
           return;

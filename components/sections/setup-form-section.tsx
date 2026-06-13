@@ -60,6 +60,14 @@ const questionCountOptions = [
   { label: "10 Questions", value: "10" }
 ];
 
+const rolePromptMap: Record<string, string> = {
+  "Frontend Developer": "Frontend Developer. Ask only frontend interview questions about React, Next.js, TypeScript, HTML, CSS, browser APIs, accessibility, UI performance, state management, responsive UI, and component architecture. Do not ask Node.js, backend, database, or server architecture questions for this role.",
+  "Backend Developer": "Backend Developer focused on Node.js, REST APIs, databases, authentication, system design, and server-side architecture",
+  "Full Stack Engineer": "Full Stack Engineer focused on React, Next.js, Node.js, APIs, databases, and end-to-end product engineering",
+  "Product Manager": "Product Manager focused on product strategy, prioritization, user research, metrics, execution, and stakeholder communication",
+  "Data Analyst": "Data Analyst focused on SQL, dashboards, data cleaning, statistics, business metrics, and insight communication"
+};
+
 export function SetupFormSection() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -99,6 +107,7 @@ export function SetupFormSection() {
     try {
       await createInterview.mutateAsync({
         ...values,
+        role: rolePromptMap[values.role] ?? values.role,
         resumeId: resumeId ?? undefined
       });
     } catch {

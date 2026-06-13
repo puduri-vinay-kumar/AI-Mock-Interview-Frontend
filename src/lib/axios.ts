@@ -66,12 +66,17 @@ export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   timeout: API_TIMEOUT_MS,
   headers: {
-    "Content-Type": "application/json"
+    Accept: "application/json"
   }
 });
 
 apiClient.interceptors.request.use((config) => {
   const token = getStoredToken();
+
+  if (typeof FormData !== "undefined" && config.data instanceof FormData) {
+    delete (config.headers as Record<string, unknown>)["Content-Type"];
+    delete (config.headers as Record<string, unknown>)["content-type"];
+  }
 
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;

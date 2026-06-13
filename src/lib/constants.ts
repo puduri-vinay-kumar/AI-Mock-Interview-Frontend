@@ -1,6 +1,8 @@
 export const API_BASE_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://p01--ai-mock-interview-backend--hjcxtdgt48mj.code.run";
 export const API_TIMEOUT_MS = 20_000;
+export const API_UPLOAD_TIMEOUT_MS = 120_000;
+export const API_VOICE_ANSWER_TIMEOUT_MS = 180_000;
 export const AUTH_TOKEN_STORAGE_KEY = "ai-interview-token";
 export const AUTH_USER_STORAGE_KEY = "ai-interview-user";
 export const APP_URL = process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000";

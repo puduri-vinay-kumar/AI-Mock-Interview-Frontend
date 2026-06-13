@@ -102,13 +102,13 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
       videoElement.muted = true;
       videoElement.playsInline = true;
       videoElement.srcObject = stream;
-      setIsVideoPreviewLive(false);
 
       if (previewFallbackTimerRef.current) {
         clearTimeout(previewFallbackTimerRef.current);
       }
 
       if (stream) {
+        setIsVideoPreviewLive(true);
         stream.getVideoTracks().forEach((track) => {
           track.enabled = true;
         });
@@ -156,6 +156,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
 
       if (cameraStreamRef.current) {
         setIsCameraReady(true);
+        setIsVideoPreviewLive(true);
         attachCameraStream(cameraStreamRef.current);
       }
 
@@ -202,8 +203,10 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   }, []);
 
   useEffect(() => {
-    attachCameraStream(cameraStreamRef.current);
-  }, [attachCameraStream]);
+    if (hasRequestedMedia && isCameraReady) {
+      attachCameraStream(cameraStreamRef.current);
+    }
+  }, [attachCameraStream, hasRequestedMedia, isCameraReady]);
 
   useEffect(() => {
     if (isLoading) {
@@ -610,14 +613,6 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                     <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
                       Camera {isCameraReady ? "connected" : hasRequestedMedia ? "waiting" : "not enabled"}
                     </div>
-                    {hasRequestedMedia && isCameraReady && !isVideoPreviewLive ? (
-                      <div className="absolute right-4 top-4 rounded-full border border-cyan-400/20 bg-slate-950/70 px-3 py-2 text-xs text-cyan-100 backdrop-blur">
-                        <span className="inline-flex items-center gap-2">
-                          <RefreshCw className="size-3.5 animate-spin" />
-                          Preview syncing
-                        </span>
-                      </div>
-                    ) : null}
                   </div>
 
                   <div className="mt-4 grid gap-3 md:grid-cols-2">

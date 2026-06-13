@@ -1,4 +1,5 @@
 import { apiClient } from "@/lib/axios";
+import { API_VOICE_ANSWER_TIMEOUT_MS } from "@/lib/constants";
 import { unwrapResponse } from "@/services/api";
 import type {
   InterviewCreateResponse,
@@ -51,6 +52,7 @@ export const interviewService = {
       `/api/interviews/${id}/answer-voice`,
       formData,
       {
+        timeout: API_VOICE_ANSWER_TIMEOUT_MS,
         onUploadProgress: (event) => {
           if (!event.total || !onProgress) {
             return;
