@@ -25,7 +25,8 @@ export function Navbar({ showProfile = false }: NavbarProps) {
   const status = useAuthStore((state) => state.status);
   const isHydrated = useAuthStore((state) => state.isHydrated);
   const logout = useLogout();
-  const shouldShowProfile = showProfile && isHydrated && (status === "authenticated" || Boolean(token));
+  const isAuthenticated = isHydrated && (status === "authenticated" || Boolean(token));
+  const shouldShowProfile = isAuthenticated || (showProfile && isAuthenticated);
   const displayName = user?.name ?? "Candidate";
   const displayEmail = user?.email ?? "Signed in";
   const links = shouldShowProfile
