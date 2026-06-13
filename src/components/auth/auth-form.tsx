@@ -3,7 +3,8 @@
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { motion } from "framer-motion";
-import { LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { Eye, EyeOff, LoaderCircle, LockKeyhole, Mail, ShieldCheck, UserRound } from "lucide-react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 
@@ -33,6 +34,7 @@ export function AuthForm({ mode }: AuthFormProps) {
   const clearError = useAuthStore((state) => state.setError);
   const loginMutation = useLogin();
   const registerMutation = useRegister();
+  const [showPassword, setShowPassword] = useState(false);
   const isRegister = mode === "register";
   const mutation = isRegister ? registerMutation : loginMutation;
 
@@ -127,10 +129,19 @@ export function AuthForm({ mode }: AuthFormProps) {
             <LockKeyhole className="pointer-events-none absolute left-4 top-1/2 size-5 -translate-y-1/2 text-violet-300" />
             <input
               {...form.register("password")}
-              className="h-14 w-full rounded-2xl border border-white/10 bg-slate-950/40 pl-12 pr-4 text-sm text-slate-100 outline-none transition focus:border-violet-400/60 focus:bg-slate-950/70"
+              className="h-14 w-full rounded-2xl border border-white/10 bg-slate-950/40 pl-12 pr-12 text-sm text-slate-100 outline-none transition focus:border-violet-400/60 focus:bg-slate-950/70"
               placeholder="Enter your password"
-              type="password"
+              type={showPassword ? "text" : "password"}
             />
+            <button
+              type="button"
+              className="absolute right-4 top-1/2 -translate-y-1/2 rounded-full p-1 text-slate-400 transition hover:bg-white/5 hover:text-white"
+              onClick={() => setShowPassword((value) => !value)}
+              aria-label={showPassword ? "Hide password" : "Show password"}
+              aria-pressed={showPassword}
+            >
+              {showPassword ? <EyeOff className="size-5" /> : <Eye className="size-5" />}
+            </button>
           </div>
           {form.formState.errors.password ? (
             <p className="text-sm text-rose-300">{form.formState.errors.password.message}</p>
