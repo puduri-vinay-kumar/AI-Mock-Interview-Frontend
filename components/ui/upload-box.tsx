@@ -2,6 +2,7 @@
 
 import { AnimatePresence, motion } from "framer-motion";
 import { FileText, LoaderCircle, UploadCloud } from "lucide-react";
+import { useRef } from "react";
 
 import { GlowButton } from "@/components/ui/glow-button";
 import { cn } from "@/lib/utils";
@@ -23,18 +24,31 @@ export function UploadBox({
   parsedSkills = [],
   helperText = "PDF or DOCX up to 5 MB. Uploading will personalize your interview setup."
 }: UploadBoxProps) {
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     onFileChange?.(event.target.files?.[0] ?? null);
+    event.target.value = "";
   };
 
   return (
-    <label
+    <div
       className={cn(
         "group relative flex min-h-[320px] cursor-pointer flex-col items-center justify-center overflow-hidden rounded-[28px] border border-dashed border-violet-400/35 bg-slate-950/35 p-8 text-center transition-all duration-300",
         "hover:border-violet-300/60 hover:bg-slate-950/55 hover:shadow-[0_0_40px_rgba(99,102,241,0.16)]"
       )}
+      role="button"
+      tabIndex={0}
+      onClick={() => inputRef.current?.click()}
+      onKeyDown={(event) => {
+        if (event.key === "Enter" || event.key === " ") {
+          event.preventDefault();
+          inputRef.current?.click();
+        }
+      }}
     >
       <input
+        ref={inputRef}
         type="file"
         className="hidden"
         accept=".pdf,.doc,.docx"
@@ -58,7 +72,15 @@ export function UploadBox({
       </div>
 
       <div className="relative z-10 mt-6">
-        <GlowButton type="button" variant="secondary" className="px-5">
+        <GlowButton
+          type="button"
+          variant="secondary"
+          className="px-5"
+          onClick={(event) => {
+            event.stopPropagation();
+            inputRef.current?.click();
+          }}
+        >
           {isUploading ? <LoaderCircle className="size-4 animate-spin" /> : null}
           {isUploading ? `Uploading ${uploadProgress}%` : "Browse File"}
         </GlowButton>
@@ -87,6 +109,6 @@ export function UploadBox({
           ))}
         </div>
       ) : null}
-    </label>
+    </div>
   );
 }

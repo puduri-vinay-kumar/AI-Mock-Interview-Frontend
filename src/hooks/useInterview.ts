@@ -109,12 +109,17 @@ export function useSubmitVoiceAnswer(id: string) {
       await queryClient.cancelQueries({ queryKey: ["interviews", id] });
     },
     onSuccess: (data) => {
+      const nextTurn = data.currentTurn ?? data.session?.currentTurn ?? null;
+
       setVoiceProgress({
         interview: data.interview,
-        currentTurn: data.completed ? null : (data.currentTurn ?? null),
+        currentTurn: data.completed ? null : nextTurn,
         report: data.report ?? null
       });
-      queryClient.setQueryData(["interviews", id], data);
+      queryClient.setQueryData(["interviews", id], {
+        ...data,
+        currentTurn: nextTurn ?? undefined
+      });
       if (data.completed) {
         addToast({
           title: "Interview completed",
@@ -133,9 +138,13 @@ export function useSubmitVoiceAnswer(id: string) {
 
       addToast({
         title: "Voice answer processed",
-        description: "The backend returned the next interview turn.",
+        description: nextTurn ? "Next question is ready." : "Answer saved. Refreshing the next turn.",
         variant: "success"
       });
+
+      if (!nextTurn) {
+        void queryClient.invalidateQueries({ queryKey: ["interviews", id] });
+      }
     },
     onError: (error) => {
       addToast({

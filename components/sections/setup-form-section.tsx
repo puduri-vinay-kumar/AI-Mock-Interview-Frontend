@@ -11,7 +11,6 @@ import { FormSelect } from "@/components/ui/form-select";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlowButton } from "@/components/ui/glow-button";
 import { UploadBox } from "@/components/ui/upload-box";
-import { setupHighlights } from "@/data/mock";
 import { useCreateInterview, useResumeUpload } from "@/hooks/useInterview";
 import { DEFAULT_QUESTION_COUNT } from "@/lib/constants";
 import { useInterviewStore } from "@/store/interview.store";
@@ -61,11 +60,11 @@ const questionCountOptions = [
 ];
 
 const rolePromptMap: Record<string, string> = {
-  "Frontend Developer": "Frontend Developer. Ask only frontend interview questions about React, Next.js, TypeScript, HTML, CSS, browser APIs, accessibility, UI performance, state management, responsive UI, and component architecture. Do not ask Node.js, backend, database, or server architecture questions for this role.",
-  "Backend Developer": "Backend Developer focused on Node.js, REST APIs, databases, authentication, system design, and server-side architecture",
-  "Full Stack Engineer": "Full Stack Engineer focused on React, Next.js, Node.js, APIs, databases, and end-to-end product engineering",
-  "Product Manager": "Product Manager focused on product strategy, prioritization, user research, metrics, execution, and stakeholder communication",
-  "Data Analyst": "Data Analyst focused on SQL, dashboards, data cleaning, statistics, business metrics, and insight communication"
+  "Frontend Developer": "Frontend Developer",
+  "Backend Developer": "Backend Developer",
+  "Full Stack Engineer": "Full Stack Engineer",
+  "Product Manager": "Product Manager",
+  "Data Analyst": "Data Analyst"
 };
 
 export function SetupFormSection() {
@@ -121,12 +120,11 @@ export function SetupFormSection() {
         <PageHeader
           eyebrow="Interview setup"
           title="Setup Your Interview"
-          description="Choose the role, interview style, and question count you want to practice so your session feels focused and relevant."
+          description="Configure the session."
           meta={
             <>
-              <span>Voice-based session</span>
-              <span>Resume personalization available</span>
-              <span>Question-count driven</span>
+              <span>Voice interview</span>
+              <span>{form.watch("questionCount")} questions</span>
             </>
           }
         />
@@ -188,25 +186,10 @@ export function SetupFormSection() {
               </div>
               <div>
                 <h2 className="text-2xl font-semibold text-white">Upload Resume</h2>
-                <p className="mt-3 text-base leading-7 text-slate-300">
-                  Add your resume to help tailor questions around your experience, skills, and target role.
-                </p>
               </div>
-
-              <div className="space-y-4">
-                {setupHighlights.map((item) => (
-                  <div key={item.title} className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                    <div className="flex items-start gap-3">
-                      <div className="rounded-2xl border border-white/10 bg-white/10 p-2.5 text-violet-200">
-                        <item.icon className="size-4" />
-                      </div>
-                      <div>
-                        <h3 className="font-medium text-white">{item.title}</h3>
-                        <p className="mt-1 text-sm leading-6 text-slate-400">{item.description}</p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
+                <div className="text-sm text-slate-400">Status</div>
+                <div className="mt-2 text-base font-medium text-white">{resumeId ? "Resume connected" : "Optional"}</div>
               </div>
             </div>
 
@@ -216,7 +199,7 @@ export function SetupFormSection() {
               isUploading={resumeUpload.isPending}
               uploadProgress={uploadProgress}
               parsedSkills={parsedSkills}
-              helperText="Upload a PDF or DOCX up to 5 MB."
+              helperText="PDF or DOCX, up to 5 MB."
             />
           </div>
 
@@ -228,16 +211,12 @@ export function SetupFormSection() {
                     <Sparkles className="size-6" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-semibold text-white">Why uploading a resume helps</h3>
-                    <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-300">
-                      Resume signals help the platform ask more relevant questions, choose stronger follow-ups, and make
-                      the interview feel closer to a real hiring conversation.
-                    </p>
+                    <h3 className="text-xl font-semibold text-white">Session summary</h3>
                     {resumeId ? <p className="mt-2 text-xs text-emerald-300">Resume connected successfully.</p> : null}
                   </div>
                 </div>
                 <div className="rounded-2xl border border-violet-400/20 bg-violet-500/10 p-3 text-violet-200">
-                  <div className="text-xs uppercase tracking-[0.22em] text-violet-200/80">Session summary</div>
+                  <div className="text-xs uppercase tracking-[0.22em] text-violet-200/80">Details</div>
                   <div className="mt-2 text-sm text-white">
                     {form.watch("interviewType")} • {form.watch("experienceLevel")} • {form.watch("questionCount")} questions
                   </div>
@@ -253,9 +232,6 @@ export function SetupFormSection() {
               >
                 {createInterview.isPending ? "Creating..." : "Start Interview"}
               </GlowButton>
-              <p className="text-center text-xs leading-6 text-slate-400">
-                You can start without a resume. Adding one simply sharpens the interview context.
-              </p>
             </div>
           </div>
         </form>

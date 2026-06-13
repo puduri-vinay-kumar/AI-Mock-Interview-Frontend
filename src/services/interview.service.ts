@@ -10,6 +10,25 @@ import type {
 } from "@/types/interview.types";
 import type { ApiResponse } from "@/types/api.types";
 
+function normalizeInterviewResponse(data: InterviewResumeResponse | InterviewSession): InterviewResumeResponse {
+  if (typeof data === "object" && data !== null && "interview" in data && data.interview) {
+    const responseData = data as InterviewResumeResponse;
+
+    return {
+      ...responseData,
+      currentTurn: responseData.currentTurn ?? responseData.session?.currentTurn ?? undefined
+    };
+  }
+
+  return {
+    interview: data as InterviewSession,
+    currentTurn:
+      typeof data === "object" && data !== null && "currentTurn" in data
+        ? (data.currentTurn as InterviewResumeResponse["currentTurn"])
+        : undefined
+  };
+}
+
 export const interviewService = {
   async createInterview(payload: InterviewSetupInput) {
     const response = await apiClient.post<ApiResponse<InterviewCreateResponse>>("/api/interviews/create", payload);
@@ -19,17 +38,7 @@ export const interviewService = {
   async getInterview(id: string) {
     const response = await apiClient.get<ApiResponse<InterviewResumeResponse>>(`/api/interviews/${id}`);
     const body = unwrapResponse(response);
-    const normalized =
-      "interview" in body.data && body.data.interview
-        ? body.data
-        : ({
-            interview: body.data as unknown as InterviewSession,
-            currentTurn:
-              typeof body.data === "object" && body.data !== null && "currentTurn" in body.data
-                ? (body.data.currentTurn as InterviewResumeResponse["currentTurn"])
-                : undefined
-          } satisfies InterviewResumeResponse);
-    return normalized;
+    return normalizeInterviewResponse(body.data);
   },
 
   async getInterviewHistory() {
@@ -62,6 +71,6 @@ export const interviewService = {
         }
       }
     );
-    return unwrapResponse(response).data;
+    return normalizeInterviewResponse(unwrapResponse(response).data);
   }
 };

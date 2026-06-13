@@ -68,6 +68,10 @@ export type InterviewCreateResponse = {
 export type InterviewResumeResponse = {
   interview: InterviewSession;
   currentTurn?: InterviewTurn;
+  session?: {
+    currentTurn?: InterviewTurn;
+    [key: string]: unknown;
+  };
   completed?: boolean;
   report?: Record<string, unknown>;
 };

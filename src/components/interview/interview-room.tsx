@@ -406,7 +406,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
         <PageHeader
           eyebrow="Voice interview"
           title={currentInterview?.role ?? data?.interview?.role ?? "Interview session"}
-          description="Listen to each question, answer in your own voice, and let the platform guide the conversation one turn at a time."
+          description="Live voice session"
           meta={
             <>
               <span>Status {interviewStatus}</span>
@@ -464,9 +464,6 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                       Interviewer
                     </div>
                     <h2 className="mt-5 text-3xl font-semibold text-white">Live interview prompt</h2>
-                    <p className="mt-3 max-w-lg text-sm leading-7 text-slate-300">
-                      Each question is generated for your session, spoken aloud in the browser, and followed by your recorded response.
-                    </p>
                   </div>
 
                   <div className="flex flex-1 items-center justify-center">
@@ -523,11 +520,7 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                     </div>
                     {showQuestionText ? (
                       <div className="text-sm leading-7 text-slate-200">{questionText || "No text question available."}</div>
-                    ) : (
-                      <div className="text-sm text-slate-400">
-                        Keep the focus on listening first. Reveal the text only if you need to review the wording.
-                      </div>
-                    )}
+                    ) : null}
                     {speechError ? <div className="text-xs text-amber-300">{speechError}</div> : null}
                     {isError && !currentTurn ? <div className="text-xs text-amber-300">We also hit a sync issue while loading this turn.</div> : null}
                   </div>
@@ -556,8 +549,8 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                         <StatePanel
                           icon={Camera}
                           eyebrow="Device setup"
-                          title="Enable camera and microphone"
-                          description="Grant device access when you are ready to begin. This keeps the interview screen responsive and avoids unnecessary browser prompts before you start."
+                          title="Enable devices"
+                          description={null}
                           className="w-full"
                           contentClassName="p-6 text-center"
                           actions={
@@ -596,8 +589,8 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                         <StatePanel
                           icon={VideoOff}
                           eyebrow="Camera unavailable"
-                          title="Preview is not ready yet"
-                          description="Allow camera access to see your live preview during the interview. You can still retry device setup if the browser blocked access."
+                          title="Camera unavailable"
+                          description={mediaError}
                           tone={mediaError ? "warning" : "default"}
                           className="w-full"
                           contentClassName="p-6 text-center"
@@ -664,9 +657,6 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                     </GlowButton>
                   </div>
 
-                  <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                    Once the question finishes, recording unlocks automatically so you can respond naturally and move straight into the next turn.
-                  </div>
                   {mediaError ? (
                     <div className="mt-3 rounded-2xl border border-amber-400/20 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
                       {mediaError}
