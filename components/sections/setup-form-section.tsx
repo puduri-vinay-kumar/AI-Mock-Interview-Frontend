@@ -24,7 +24,7 @@ const setupSchema = z.object({
   interviewType: z.enum(["technical", "hr", "behavioral", "coding", "mixed"], {
     message: "Select an interview type."
   }),
-  questionCount: z.number().min(1, "Select question count.").max(12, "Keep the interview focused.")
+  questionCount: z.number().int("Question count must be a whole number.").min(1, "Select question count.").max(20, "Question count must be between 1 and 20.")
 });
 
 type SetupValues = z.infer<typeof setupSchema>;
@@ -56,7 +56,9 @@ const questionCountOptions = [
   { label: "3 Questions", value: "3" },
   { label: "5 Questions", value: "5" },
   { label: "7 Questions", value: "7" },
-  { label: "10 Questions", value: "10" }
+  { label: "10 Questions", value: "10" },
+  { label: "15 Questions", value: "15" },
+  { label: "20 Questions", value: "20" }
 ];
 
 const rolePromptMap: Record<string, string> = {
@@ -105,8 +107,10 @@ export function SetupFormSection() {
   const onSubmit = async (values: SetupValues) => {
     try {
       await createInterview.mutateAsync({
-        ...values,
-        role: rolePromptMap[values.role] ?? values.role,
+        role: (rolePromptMap[values.role] ?? values.role).trim(),
+        experienceLevel: values.experienceLevel,
+        interviewType: values.interviewType,
+        questionCount: Number(values.questionCount),
         resumeId: resumeId ?? undefined
       });
     } catch {

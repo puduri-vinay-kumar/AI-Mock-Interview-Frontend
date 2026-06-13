@@ -4,7 +4,7 @@ import axios, { AxiosError } from "axios";
 
 import { clearStoredSession, getStoredToken } from "@/lib/auth";
 import { API_BASE_URL, API_TIMEOUT_MS, DEFAULT_COLD_START_MESSAGE } from "@/lib/constants";
-import type { ApiErrorLike, ApiErrorResponse } from "@/types/api.types";
+import type { ApiErrorLike, ApiErrorResponse, ApiFieldError } from "@/types/api.types";
 
 let unauthorizedHandler: (() => void) | null = null;
 
@@ -44,10 +44,19 @@ export function normalizeApiError(error: unknown): ApiErrorLike {
       };
     }
 
+    const details = axiosError.response?.data?.error;
+    const fieldMessages = Array.isArray(details)
+      ? details
+          .map((detail: ApiFieldError) => detail?.message)
+          .filter((message): message is string => Boolean(message))
+      : [];
+
     return {
-      message: messageFromApi ?? "Something went wrong while contacting the backend.",
+      message: fieldMessages.length
+        ? fieldMessages.join(" ")
+        : messageFromApi ?? "Something went wrong while contacting the backend.",
       status,
-      details: axiosError.response?.data?.error
+      details
     };
   }
 

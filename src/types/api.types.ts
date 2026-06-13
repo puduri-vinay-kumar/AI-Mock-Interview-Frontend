@@ -10,6 +10,11 @@ export type ApiErrorResponse = {
   error?: unknown;
 };
 
+export type ApiFieldError = {
+  field?: string;
+  message?: string;
+};
+
 export type ApiErrorLike = {
   message: string;
   status?: number;
