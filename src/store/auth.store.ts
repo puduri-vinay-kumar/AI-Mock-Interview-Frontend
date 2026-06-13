@@ -9,6 +9,7 @@ import type { ApiErrorLike } from "@/types/api.types";
 import type { AuthPayload, AuthStoreState } from "@/types/auth.types";
 
 const AUTH_BOOTSTRAP_TIMEOUT_MS = 4000;
+let bootstrapPromise: Promise<void> | null = null;
 
 export const useAuthStore = create<AuthStoreState>((set) => ({
   user: null,
@@ -61,6 +62,11 @@ function withBootstrapTimeout<T>(promise: Promise<T>) {
 }
 
 export async function bootstrapAuth() {
+  if (bootstrapPromise) {
+    return bootstrapPromise;
+  }
+
+  bootstrapPromise = (async () => {
   const store = useAuthStore.getState();
   const token = getStoredToken();
   const cachedUser = getStoredUser();
@@ -71,57 +77,39 @@ export async function bootstrapAuth() {
     return;
   }
 
-  if (cachedUser) {
     useAuthStore.setState({
       user: cachedUser,
       token,
       status: "authenticated",
-      isHydrated: true
-    });
-    useAuthStore.setState({
-      isBootstrapping: false,
-      bootstrapMessage: null
-    });
-  } else {
-    useAuthStore.setState({
-      token,
-      status: "loading"
-    });
-
-    store.setBootstrapping(true, "Restoring your secure session...");
-  }
-
-  try {
-    const user = await withBootstrapTimeout(authService.getCurrentUser(token));
-    store.setSession({ token, user });
-    useAuthStore.setState({
       isHydrated: true,
       isBootstrapping: false,
       bootstrapMessage: null
     });
-  } catch (error) {
-    const message =
-      typeof error === "object" && error !== null && "message" in error
-        ? (error as ApiErrorLike).message
-        : "Your session has expired. Please log in again.";
 
-    if (cachedUser) {
-      useAuthStore.setState({
-        isHydrated: true,
-        isBootstrapping: false,
-        bootstrapMessage: null
-      });
-      return;
+    try {
+      const user = await withBootstrapTimeout(authService.getCurrentUser(token));
+      store.setSession({ token, user });
+    } catch (error) {
+      const message =
+        typeof error === "object" && error !== null && "message" in error
+          ? (error as ApiErrorLike).message
+          : "Your session has expired. Please log in again.";
+
+      if (cachedUser) {
+        useAuthStore.setState({
+          error: message
+        });
+        return;
+      }
+
+      store.clearSession();
+      store.setError(message);
     }
+  })().finally(() => {
+    bootstrapPromise = null;
+  });
 
-    store.clearSession();
-    store.setError(message);
-    useAuthStore.setState({
-      isHydrated: true,
-      isBootstrapping: false,
-      bootstrapMessage: null
-    });
-  }
+  return bootstrapPromise;
 }
 
 registerUnauthorizedHandler(() => {
