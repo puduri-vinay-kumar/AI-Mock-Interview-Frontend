@@ -1,5 +1,6 @@
 import { apiClient } from "@/lib/axios";
-import { API_VOICE_ANSWER_TIMEOUT_MS } from "@/lib/constants";
+import { getStoredToken } from "@/lib/auth";
+import { API_BASE_URL, API_VOICE_ANSWER_TIMEOUT_MS } from "@/lib/constants";
 import { unwrapResponse } from "@/services/api";
 import type {
   InterviewCreateResponse,
@@ -9,6 +10,26 @@ import type {
   InterviewVoiceAnswerInput
 } from "@/types/interview.types";
 import type { ApiResponse } from "@/types/api.types";
+
+async function parseApiResponse<T>(response: Response) {
+  const body = (await response.json().catch(() => null)) as (ApiResponse<T> & { error?: unknown }) | null;
+
+  if (!body) {
+    throw new Error("The backend returned an unreadable response.");
+  }
+
+  if (!response.ok || !body.success) {
+    const fieldMessage = Array.isArray(body.error)
+      ? body.error.find((item): item is { message: string } => {
+          return typeof item === "object" && item !== null && "message" in item && typeof item.message === "string";
+        })?.message
+      : null;
+
+    throw new Error(fieldMessage ?? body.message ?? "The backend rejected this request.");
+  }
+
+  return body.data;
+}
 
 function normalizeInterviewResponse(data: InterviewResumeResponse | InterviewSession): InterviewResumeResponse {
   if (typeof data === "object" && data !== null && "interview" in data && data.interview) {
@@ -31,8 +52,26 @@ function normalizeInterviewResponse(data: InterviewResumeResponse | InterviewSes
 
 export const interviewService = {
   async createInterview(payload: InterviewSetupInput) {
-    const response = await apiClient.post<ApiResponse<InterviewCreateResponse>>("/api/interviews/create", payload);
-    return unwrapResponse(response).data;
+    const token = getStoredToken();
+    const body = {
+      role: payload.role.trim(),
+      experienceLevel: payload.experienceLevel,
+      interviewType: payload.interviewType,
+      questionCount: Number(payload.questionCount),
+      ...(payload.resumeId ? { resumeId: payload.resumeId } : {}),
+      ...(typeof payload.previousScore === "number" ? { previousScore: payload.previousScore } : {})
+    };
+
+    const response = await fetch(`${API_BASE_URL}/api/interviews/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      },
+      body: JSON.stringify(body)
+    });
+
+    return parseApiResponse<InterviewCreateResponse>(response);
   },
 
   async getInterview(id: string) {

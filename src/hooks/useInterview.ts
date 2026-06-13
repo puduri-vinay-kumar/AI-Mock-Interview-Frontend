@@ -47,13 +47,13 @@ export function useCreateInterview() {
   return useMutation({
     mutationFn: (payload: InterviewSetupInput) => interviewService.createInterview(payload),
     onSuccess: (data) => {
-      const interviewId = data.interview._id ?? data.interview.id;
-      const currentTurn = data.session?.currentTurn ?? data.currentTurn ?? null;
+      const interviewId = data.interview._id;
+      const currentTurn = data.session?.currentTurn ?? null;
 
       if (!interviewId) {
         addToast({
-          title: "Interview created without an id",
-          description: "The backend response did not include a usable interview id.",
+          title: "Interview created without _id",
+          description: "The backend response did not include data.interview._id.",
           variant: "error"
         });
         return;

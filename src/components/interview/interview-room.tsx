@@ -1,10 +1,10 @@
 "use client";
 
-import { AlertTriangle, Bot, Camera, Mic, MicOff, Play, RefreshCw, VideoOff, Volume2 } from "lucide-react";
+import Link from "next/link";
+import { ArrowLeft, Bot, Camera, Mic, MicOff, Play, RefreshCw, VideoOff, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 import { LoadingSkeleton } from "@/components/system/loading-skeleton";
-import { PageHeader } from "@/components/system/page-header";
 import { StatePanel } from "@/components/system/state-panel";
 import { GlassCard } from "@/components/ui/glass-card";
 import { GlowButton } from "@/components/ui/glow-button";
@@ -224,6 +224,14 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
     };
   }, [isInitialLoading]);
 
+  useEffect(() => {
+    if (!isScreenReady || hasRequestedMedia || isRequestingMedia || isCompletedSession) {
+      return;
+    }
+
+    void requestMediaAccess();
+  }, [hasRequestedMedia, isCompletedSession, isRequestingMedia, isScreenReady, requestMediaAccess]);
+
   const speakCurrentTurn = useCallback(() => {
     if (speechUnlockTimerRef.current) {
       clearTimeout(speechUnlockTimerRef.current);
@@ -402,195 +410,172 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
   };
 
   return (
-    <section className="container-shell pb-24 pt-10">
-      <div className="mx-auto max-w-7xl">
-        <PageHeader
-          eyebrow="Voice interview"
-          title={currentInterview?.role ?? data?.interview?.role ?? "Interview session"}
-          description="Live voice session"
-          meta={
-            <>
-              <span>Status {interviewStatus}</span>
-              <span>{currentInterview?.questionCount ?? "--"} questions planned</span>
-              <span>{currentQuestionNumber ?? "--"} current turn</span>
-            </>
-          }
-          actions={
-            <>
-              <GlowButton type="button" variant="secondary" onClick={speakCurrentTurn}>
-                <Play className="size-4" />
-                Replay question
-              </GlowButton>
-              <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
-                <RefreshCw className="size-4" />
-                Enable devices
-              </GlowButton>
-            </>
-          }
-        />
+    <section className="relative min-h-screen overflow-hidden bg-[#020617] px-4 py-4 text-white sm:px-6 lg:px-8">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_14%,rgba(99,102,241,0.20),transparent_34%),radial-gradient(circle_at_80%_12%,rgba(14,165,233,0.16),transparent_30%),linear-gradient(180deg,rgba(2,6,23,0),#020617_82%)]" />
+      <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/20 to-transparent" />
 
-        {isInitialLoading ? (
-          <div className="grid gap-6 lg:grid-cols-2">
-            <LoadingSkeleton className="h-[520px] w-full" />
-            <LoadingSkeleton className="h-[520px] w-full" />
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-32px)] max-w-7xl flex-col">
+        <header className="flex items-center justify-between gap-4 rounded-[28px] border border-white/10 bg-white/[0.04] px-4 py-3 shadow-[0_24px_80px_rgba(0,0,0,0.28)] backdrop-blur-2xl">
+          <div className="flex min-w-0 items-center gap-3">
+            <Link
+              href="/setup"
+              className="grid size-10 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 text-slate-300 transition hover:bg-white/10 hover:text-white"
+              aria-label="Back to setup"
+            >
+              <ArrowLeft className="size-4" />
+            </Link>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-semibold text-white">
+                {currentInterview?.role ?? data?.interview?.role ?? "Interview session"}
+              </div>
+              <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-400">
+                <span className="size-1.5 rounded-full bg-emerald-300 shadow-[0_0_14px_rgba(110,231,183,0.8)]" />
+                Live voice interview
+              </div>
+            </div>
           </div>
-        ) : isCompletedSession ? (
-          <GlassCard className="rounded-[36px] p-8 sm:p-10">
-            <div className="mx-auto max-w-3xl text-center">
+
+          <div className="hidden items-center gap-2 rounded-full border border-white/10 bg-slate-950/40 px-3 py-2 text-xs text-slate-300 sm:flex">
+            <span>{isSpeakingQuestion ? "AI speaking" : isRecording ? "Recording answer" : submitVoiceAnswer.isPending ? "Processing answer" : canRecordAnswer ? "Your turn" : "Preparing"}</span>
+          </div>
+        </header>
+
+        <div className="flex flex-1 items-center py-5">
+          {isInitialLoading ? (
+            <div className="grid w-full gap-5 lg:grid-cols-2">
+              <LoadingSkeleton className="h-[70vh] min-h-[520px] w-full rounded-[36px]" />
+              <LoadingSkeleton className="h-[70vh] min-h-[520px] w-full rounded-[36px]" />
+            </div>
+          ) : isCompletedSession ? (
+            <GlassCard className="mx-auto w-full max-w-3xl rounded-[36px] p-8 text-center sm:p-10">
               <p className="text-sm font-semibold uppercase tracking-[0.24em] text-emerald-300">Session completed</p>
-              <h2 className="mt-4 text-3xl font-semibold text-white">This interview has already been completed.</h2>
-              <p className="mt-4 text-slate-300">
-                Your responses have been evaluated. Start another session to practice again, or return to your history to
-                review previous interview runs.
-              </p>
+              <h1 className="mt-4 text-3xl font-semibold text-white">Your interview has ended.</h1>
+              <p className="mt-4 text-slate-300">Your answers have been evaluated and the report is ready to review.</p>
               <div className="mt-8 flex flex-wrap justify-center gap-3">
                 <GlowButton href="/setup" className="px-5 py-3">
                   Start another session
                 </GlowButton>
                 <GlowButton href="/history" variant="secondary" className="px-5 py-3">
-                  Back to history
+                  View history
                 </GlowButton>
               </div>
-            </div>
-          </GlassCard>
-        ) : (
-          <>
-            <div className="grid gap-6 lg:grid-cols-2">
-              <GlassCard className="relative overflow-hidden rounded-[36px] p-8">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(99,102,241,0.14),transparent_50%)]" />
-                <div className="relative flex h-[520px] flex-col justify-between">
-                  <div>
-                    <div className="inline-flex items-center gap-2 rounded-full border border-violet-400/20 bg-violet-500/10 px-4 py-2 text-sm text-violet-100">
+            </GlassCard>
+          ) : (
+            <div className="grid w-full gap-5 lg:grid-cols-[0.92fr_1.08fr]">
+              <GlassCard className="relative min-h-[70vh] overflow-hidden rounded-[36px] p-6 sm:p-8">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_22%,rgba(139,92,246,0.20),transparent_42%)]" />
+                <div className="relative flex h-full min-h-[520px] flex-col">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-violet-300/20 bg-violet-400/10 px-3 py-2 text-xs font-medium text-violet-100">
                       <Bot className="size-4" />
-                      Interviewer
+                      AI Interviewer
                     </div>
-                    <h2 className="mt-5 text-3xl font-semibold text-white">Live interview prompt</h2>
+                    <button
+                      className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/10 hover:text-white"
+                      onClick={() => setShowQuestionText((value) => !value)}
+                      disabled={!currentTurn}
+                    >
+                      {showQuestionText ? "Hide prompt" : "Show prompt"}
+                    </button>
                   </div>
 
-                  <div className="flex flex-1 items-center justify-center">
+                  <div className="flex flex-1 items-center justify-center py-10">
                     {currentTurn ? (
-                      <div className="relative flex size-64 items-center justify-center rounded-full border border-white/10 bg-gradient-to-br from-violet-500/20 via-slate-900 to-blue-500/20 shadow-[0_0_80px_rgba(99,102,241,0.25)]">
-                        <div className="absolute inset-6 rounded-full border border-white/10 bg-slate-950/70" />
-                        <div className="relative z-10 flex flex-col items-center gap-3">
-                          <div className="rounded-full border border-violet-400/20 bg-violet-500/10 p-5 text-violet-200">
-                            <Bot className={`size-16 ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
+                      <div className="relative grid place-items-center">
+                        <div className={`absolute size-72 rounded-full bg-violet-500/15 blur-3xl ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
+                        <div className="absolute size-80 rounded-full border border-violet-300/10" />
+                        <div className="absolute size-64 rounded-full border border-blue-300/10" />
+                        <div className="relative grid size-56 place-items-center rounded-full border border-white/10 bg-gradient-to-br from-slate-950 via-slate-900 to-indigo-950 shadow-[0_0_100px_rgba(99,102,241,0.22)] sm:size-64">
+                          <div className="absolute inset-4 rounded-full border border-white/10 bg-white/[0.03]" />
+                          <Bot className={`relative z-10 size-20 text-violet-100 sm:size-24 ${isSpeakingQuestion ? "animate-pulse" : ""}`} />
+                        </div>
+                        <div className="mt-8 text-center">
+                          <div className="text-2xl font-semibold text-white">
+                            {isSpeakingQuestion ? "Asking the question" : canRecordAnswer ? "Listening for your answer" : "Preparing next turn"}
                           </div>
-                          <div className="text-center">
-                            <div className="text-lg font-semibold text-white">
-                              {isSpeakingQuestion ? "Speaking..." : canRecordAnswer ? "Your turn" : "Preparing..."}
-                            </div>
-                            <div className="mt-1 text-sm text-slate-400">
-                              {currentTurn?.voiceMode ? "Voice mode enabled" : "Voice mode pending"}
-                            </div>
-                          </div>
+                          <p className="mt-2 text-sm text-slate-400">Keep your response natural, clear, and concise.</p>
                         </div>
                       </div>
                     ) : (
                       <StatePanel
                         icon={Volume2}
-                        eyebrow="Waiting for the next prompt"
-                        title="The next question is being prepared"
-                        description="If the session has just started or resumed, give the backend a moment and then retry. Once the next turn is available, the question will be spoken automatically."
+                        eyebrow="Syncing turn"
+                        title="Preparing the next question"
+                        description="If this takes longer than expected, refresh the session turn."
                         tone="warning"
                         className="w-full max-w-xl"
                         actions={
                           <GlowButton type="button" variant="secondary" onClick={() => void refetch()}>
                             <RefreshCw className="size-4" />
-                            Refresh turn
+                            Retry
                           </GlowButton>
                         }
                       />
                     )}
                   </div>
 
-                  <div className="space-y-3 rounded-[28px] border border-white/10 bg-white/[0.03] p-5">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <div className="text-sm font-medium text-white">Current turn</div>
-                        <div className="text-sm text-slate-400">
-                          {currentTurn?.topic ?? "General topic"} {currentTurn?.difficulty ? `• ${currentTurn.difficulty}` : ""}
-                        </div>
-                      </div>
-                      <button
-                        className="rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs text-slate-300 transition hover:bg-white/10"
-                        onClick={() => setShowQuestionText((value) => !value)}
-                        disabled={!currentTurn}
-                      >
-                        {showQuestionText ? "Hide text" : "Reveal text"}
-                      </button>
+                  {showQuestionText ? (
+                    <div className="rounded-[28px] border border-white/10 bg-slate-950/45 p-5 text-sm leading-7 text-slate-200">
+                      {questionText || "No text prompt available for this turn."}
                     </div>
-                    {showQuestionText ? (
-                      <div className="text-sm leading-7 text-slate-200">{questionText || "No text question available."}</div>
-                    ) : null}
-                    {speechError ? <div className="text-xs text-amber-300">{speechError}</div> : null}
-                    {isError && !currentTurn ? <div className="text-xs text-amber-300">We also hit a sync issue while loading this turn.</div> : null}
-                  </div>
+                  ) : null}
+                  {speechError ? <div className="mt-3 text-xs text-amber-300">{speechError}</div> : null}
+                  {isError && !currentTurn ? <div className="mt-3 text-xs text-amber-300">Session sync needs a retry.</div> : null}
                 </div>
               </GlassCard>
 
-              <GlassCard className="relative overflow-hidden rounded-[36px] p-8">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(56,189,248,0.14),transparent_45%)]" />
-                <div className="relative flex h-[520px] flex-col">
-                  <div className="mb-5 flex items-center justify-between">
-                    <div>
-                      <div className="inline-flex items-center gap-2 rounded-full border border-cyan-400/20 bg-cyan-500/10 px-4 py-2 text-sm text-cyan-100">
-                        <Camera className="size-4" />
-                        Candidate Camera
-                      </div>
-                      <h2 className="mt-4 text-3xl font-semibold text-white">{user?.name ?? "Candidate"}</h2>
-                    </div>
-                    <div className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300">
-                      {isRecording ? `${recordingSeconds}s recording` : submitVoiceAnswer.isPending ? `${uploadProgress}% uploading` : "Ready"}
-                    </div>
-                  </div>
-
-                  <div className="relative flex-1 overflow-hidden rounded-[28px] border border-white/10 bg-slate-950/60">
+              <GlassCard className="relative min-h-[70vh] overflow-hidden rounded-[36px] p-4 sm:p-5">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_bottom,rgba(56,189,248,0.18),transparent_46%)]" />
+                <div className="relative flex h-full min-h-[520px] flex-col">
+                  <div className="relative flex-1 overflow-hidden rounded-[30px] border border-white/10 bg-slate-950/70">
                     {!hasRequestedMedia ? (
                       <div className="flex h-full items-center justify-center p-6">
                         <StatePanel
                           icon={Camera}
-                          eyebrow="Device setup"
-                          title="Enable devices"
-                          description={null}
+                          eyebrow="Device access"
+                          title={isRequestingMedia ? "Connecting camera and microphone" : "Waiting for browser permission"}
+                          description={
+                            isRequestingMedia
+                              ? "Allow access to start your interview preview."
+                              : "Use the reconnect control if the browser prompt does not appear."
+                          }
                           className="w-full"
                           contentClassName="p-6 text-center"
                           actions={
                             <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
                               <Camera className="size-4" />
-                              Enable devices
+                              Reconnect
                             </GlowButton>
                           }
                         />
                       </div>
                     ) : isCameraReady ? (
-                      <>
-                        <video
-                          ref={videoRef}
-                          autoPlay
-                          muted
-                          playsInline
-                          className="h-full w-full object-cover"
-                          onLoadedMetadata={() => {
-                            void playCameraPreview();
-                          }}
-                          onLoadedData={() => {
-                            setIsVideoPreviewLive(true);
-                          }}
-                          onCanPlay={() => {
-                            setIsVideoPreviewLive(true);
-                            void playCameraPreview();
-                          }}
-                          onPlaying={() => {
-                            setIsVideoPreviewLive(true);
-                          }}
-                        />
-                      </>
+                      <video
+                        ref={videoRef}
+                        autoPlay
+                        muted
+                        playsInline
+                        className="h-full w-full object-cover"
+                        onLoadedMetadata={() => {
+                          void playCameraPreview();
+                        }}
+                        onLoadedData={() => {
+                          setIsVideoPreviewLive(true);
+                        }}
+                        onCanPlay={() => {
+                          setIsVideoPreviewLive(true);
+                          void playCameraPreview();
+                        }}
+                        onPlaying={() => {
+                          setIsVideoPreviewLive(true);
+                        }}
+                      />
                     ) : (
                       <div className="flex h-full items-center justify-center p-6">
                         <StatePanel
                           icon={VideoOff}
                           eyebrow="Camera unavailable"
-                          title="Camera unavailable"
+                          title="Camera preview is unavailable"
                           description={mediaError}
                           tone={mediaError ? "warning" : "default"}
                           className="w-full"
@@ -598,64 +583,65 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                           actions={
                             <GlowButton type="button" variant="secondary" onClick={() => void requestMediaAccess()}>
                               <RefreshCw className="size-4" />
-                              Enable camera
+                              Reconnect
                             </GlowButton>
                           }
                         />
                       </div>
                     )}
-                    <div className="absolute bottom-4 left-4 rounded-full border border-emerald-400/20 bg-emerald-500/10 px-4 py-2 text-xs text-emerald-100">
-                      Camera {isCameraReady ? "connected" : hasRequestedMedia ? "waiting" : "not enabled"}
+
+                    <div className="absolute left-4 top-4 rounded-full border border-white/10 bg-black/35 px-4 py-2 text-sm font-medium text-white backdrop-blur-xl">
+                      {user?.name ?? "Candidate"}
+                    </div>
+                    <div className="absolute bottom-4 left-4 rounded-full border border-emerald-300/20 bg-emerald-400/10 px-3 py-2 text-xs text-emerald-100 backdrop-blur-xl">
+                      {isCameraReady ? "Camera live" : hasRequestedMedia ? "Camera pending" : "Camera off"}
+                    </div>
+                    <div className="absolute bottom-4 right-4 rounded-full border border-white/10 bg-black/35 px-3 py-2 text-xs text-slate-200 backdrop-blur-xl">
+                      {isRecording ? `${recordingSeconds}s` : submitVoiceAnswer.isPending ? `${uploadProgress}%` : isMicrophoneReady ? "Mic ready" : "Mic pending"}
                     </div>
                   </div>
 
-                  <div className="mt-4 grid gap-3 md:grid-cols-2">
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Microphone</div>
-                      <div className="mt-2 text-white">
-                        {isMicrophoneReady ? "Connected and ready to record" : hasRequestedMedia ? "Waiting for permission" : "Not enabled yet"}
-                      </div>
+                  <div className="mt-4 rounded-[28px] border border-white/10 bg-slate-950/60 p-3 shadow-[0_20px_80px_rgba(0,0,0,0.28)]">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-center">
+                      <button
+                        type="button"
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                        onClick={speakCurrentTurn}
+                        disabled={!currentTurn || isSpeakingQuestion}
+                      >
+                        <Play className="size-4" />
+                        Replay
+                      </button>
+                      {isRecording ? (
+                        <button
+                          type="button"
+                          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-rose-500 px-6 text-sm font-semibold text-white shadow-[0_0_35px_rgba(244,63,94,0.35)] transition hover:bg-rose-400"
+                          onClick={stopRecording}
+                        >
+                          <MicOff className="size-4" />
+                          Submit answer
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-500 to-blue-500 px-6 text-sm font-semibold text-white shadow-[0_0_35px_rgba(99,102,241,0.40)] transition hover:shadow-[0_0_55px_rgba(99,102,241,0.55)] disabled:cursor-not-allowed disabled:opacity-45"
+                          onClick={() => void startRecording()}
+                          disabled={submitVoiceAnswer.isPending || isRequestingMedia || !currentTurn || !canRecordAnswer || !isMicrophoneReady}
+                        >
+                          <Mic className="size-4" />
+                          {submitVoiceAnswer.isPending ? "Processing..." : canRecordAnswer ? "Answer" : "Wait"}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-5 text-sm font-semibold text-slate-100 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-45"
+                        onClick={() => void requestMediaAccess()}
+                        disabled={isRequestingMedia}
+                      >
+                        <RefreshCw className="size-4" />
+                        Reconnect
+                      </button>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-300">
-                      <div className="text-xs uppercase tracking-[0.2em] text-slate-500">Interview flow</div>
-                      <div className="mt-2 text-white">
-                        {isSpeakingQuestion
-                          ? "Listening to question"
-                          : submitVoiceAnswer.isPending
-                            ? "Uploading answer"
-                            : canRecordAnswer
-                              ? "Ready for your answer"
-                              : "Waiting for AI prompt"}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="mt-6 grid gap-4 md:grid-cols-2">
-                    <GlowButton
-                      type="button"
-                      className="h-14 justify-center"
-                      onClick={() => void startRecording()}
-                      disabled={isRecording || submitVoiceAnswer.isPending || isRequestingMedia || !currentTurn || !canRecordAnswer || !isMicrophoneReady}
-                    >
-                      <Mic className="size-4" />
-                      {isRequestingMedia
-                        ? "Checking devices..."
-                        : isRecording
-                          ? "Recording..."
-                          : canRecordAnswer
-                            ? "Start Answer"
-                            : "Wait for AI"}
-                    </GlowButton>
-                    <GlowButton
-                      type="button"
-                      variant="secondary"
-                      className="h-14 justify-center"
-                      onClick={stopRecording}
-                      disabled={!isRecording}
-                    >
-                      <MicOff className="size-4" />
-                      Stop & Upload
-                    </GlowButton>
                   </div>
 
                   {mediaError ? (
@@ -667,41 +653,8 @@ export function InterviewRoom({ interviewId }: InterviewRoomProps) {
                 </div>
               </GlassCard>
             </div>
-
-            <div className="mt-6 grid gap-4 md:grid-cols-3">
-              <GlassCard className="rounded-[28px] p-5">
-                <div className="text-sm text-slate-400">Question count</div>
-                <div className="mt-2 text-3xl font-semibold text-white">{currentInterview?.questionCount ?? "--"}</div>
-              </GlassCard>
-              <GlassCard className="rounded-[28px] p-5">
-                <div className="text-sm text-slate-400">Session status</div>
-                <div className="mt-2 text-3xl font-semibold text-white">{String(currentInterview?.status ?? "scheduled")}</div>
-              </GlassCard>
-              <GlassCard className="rounded-[28px] p-5">
-                <div className="text-sm text-slate-400">Current question</div>
-                <div className="mt-2 text-3xl font-semibold text-white">{currentQuestionNumber ?? "--"}</div>
-              </GlassCard>
-            </div>
-
-            {isError ? (
-              <div className="mt-6">
-                <StatePanel
-                  icon={AlertTriangle}
-                  eyebrow="Connection issue"
-                  title="The interview session needs a refresh"
-                  description="The backend may have timed out or cold-started. Retry to resync the current turn without losing the session."
-                  tone="warning"
-                  actions={
-                    <GlowButton type="button" variant="secondary" onClick={() => void refetch()}>
-                      <RefreshCw className="size-4" />
-                      Retry session sync
-                    </GlowButton>
-                  }
-                />
-              </div>
-            ) : null}
-          </>
-        )}
+          )}
+        </div>
       </div>
     </section>
   );
